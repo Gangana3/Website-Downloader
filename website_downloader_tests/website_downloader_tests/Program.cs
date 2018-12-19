@@ -11,11 +11,12 @@ namespace website_downloader_tests
     {
         static void Main(string[] args)
         {
-            var htmlWeb = new HtmlWeb();
-            HtmlDocument htmlDocument = htmlWeb.Load("https://www.ynet.co.il");
-            HtmlNodeCollection nodes = htmlDocument.DocumentNode.SelectNodes("//img");
-            foreach (HtmlNode imgTag in nodes)
-                Console.WriteLine(imgTag.Attributes["src"].Value);
+            string code = "<img src=\"auto:blank\" style='width: 100%'> </body>";
+            var htmlElement = new HtmlElement(code);
+
+            Console.WriteLine(htmlElement.TagName);
+            foreach (var pair in htmlElement.Attributes)
+                Console.WriteLine(pair.Key + "   $   " + pair.Value);
         }
     }
 }
