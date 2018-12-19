@@ -8,7 +8,8 @@ using System.Text.RegularExpressions;
 namespace website_downloader_tests
 {
     /// <summary>
-    /// This class enables to retreive data from html code and change it if needed
+    /// Represents an html document. Includes some useful methods
+    /// to work with html documents.
     /// </summary>
     class HtmlDocument
     {
@@ -20,26 +21,32 @@ namespace website_downloader_tests
         }
 
         /// <summary>
-        /// Return
+        /// Returns all elements with given tag name.
         /// </summary>
-        /// <returns></returns>
-        public List<HtmlElement> GetElementsByTagName()
+        /// <returns>All elements with given tag name.</returns>
+        public List<HtmlElement> GetElementsByTagName(string tagName)
         {
             throw new NotImplementedException();
+        }
+
+        public IEnumerable<HtmlElement> GetAllElements()
+        {
+            
         }
     }
 
 
     /// <summary>
-    /// Represents an html element
+    /// Represents an html element.
     /// </summary>
     class HtmlElement
     {
         public string RawCode { get { return this.ToString(); } }           // The element code as is (with changes)
         public Dictionary<string, string> Attributes { get; private set; }  // The element attributes (can be modified)      
         public string TagName { get; private set; }                         // The element's tag name
-        public string CodeInside { get; private set; }                      // The code inside the element
+        public string Content { get; private set; }                      // The code inside the element
         public int Length { get { return this.RawCode.Length; } }           // The element's length
+        public List<HtmlElement> InnerElements { get { } }
 
         private string code;        // code to work on
 
@@ -49,10 +56,11 @@ namespace website_downloader_tests
 
             // Assign the fields
             this.TagName = this.GetTagName();
-            this.CodeInside = this.GetCodeInside();
+            this.Content = this.GetCodeInside();
             this.Attributes = this.GetAttributes();
         }
 
+        #region private functions
         /// <summary>
         /// Returns the tag name from the code
         /// </summary>
@@ -116,20 +124,58 @@ namespace website_downloader_tests
                 int equalsIndex = rawAttributes.IndexOf('=');
                 string key = rawAttributes.Slice(0, equalsIndex);   // key of the attribute for example src or href
                 int quotationMarkIndex = rawAttributes.IndexOf(quotationMark);
-                Console.WriteLine("DEBUG: {0}", rawAttributes);
                 int nextQuotationMarkIndex = rawAttributes.IndexOf(quotationMark, quotationMarkIndex + 1);
                 string value = rawAttributes.Slice(quotationMarkIndex + 1, nextQuotationMarkIndex);  // the value of the attribute for example 'src="auto:blank"' -> auto:blank
 
-                attributes[key] = value;    // Add the attribute to the attributes dictionary
+                key = key.ToLower();        // Make the key lower-case
+                attributes[key] = value;    // Add the attribute to the attributes dictionary 
                 rawAttributes = rawAttributes.Slice(nextQuotationMarkIndex + 1, rawAttributes.Length); 
             }
-
+           
             return attributes;
         }
 
-        public override string ToString()
+        /// <summary>
+        /// Whether the element can contain content or not .
+        /// img element for example will return false because cannot
+        /// contain content. p will return true.
+        /// </summary>
+        private bool IsNonContentElement
+        {
+            get
+            {
+                return this.code.Count((c) => c == '<') <= 1;
+            }
+        }
+
+
+        /// <summary>
+        /// Returns all elements inside the (None recursively)
+        /// </summary>
+        /// <returns>All elements inside the (None recursively)</returns>
+        private List<HtmlElement> GetInnerElements()
         {
             throw new NotImplementedException();
+        }
+        #endregion
+
+        /// <summary>
+        /// Format code from the element's attributes
+        /// </summary>
+        /// <returns>The raw html code</returns>
+        public override string ToString()
+        {
+            string declaration = string.Format("<{0}", this.TagName);
+            foreach (KeyValuePair<string, string> pair in this.Attributes)
+            {
+                declaration += string.Format(" {0}=\"{1}\"", pair.Key, pair.Value); 
+            }
+            if (this.IsNonContentElement)
+                return declaration + "/>";
+
+            declaration += ">";
+            return string.Format("{0}{1}</{2}>", declaration, this.Content, this.TagName);
+            
         }
     }
 }
