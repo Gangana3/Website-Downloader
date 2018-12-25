@@ -14,6 +14,7 @@ namespace website_downloader_tests
     class HtmlDocument
     {
         public string HtmlCode { get; private set; }
+        public string CodeWithoutComments { get { return this.GetCodeWithoutComments(); } }
 
         public HtmlDocument(string htmlCode)
         {
@@ -31,8 +32,19 @@ namespace website_downloader_tests
 
         public IEnumerable<HtmlElement> GetAllElements()
         {
-            
+            throw new NotImplementedException();
         }
+
+        #region Private Methods
+        /// <summary>
+        /// Returns the code without the comments
+        /// </summary>
+        /// <returns></returns>
+        private string GetCodeWithoutComments()
+        {
+            throw new NotImplementedException();
+        }
+        #endregion
     }
 
 
@@ -44,9 +56,9 @@ namespace website_downloader_tests
         public string RawCode { get { return this.ToString(); } }           // The element code as is (with changes)
         public Dictionary<string, string> Attributes { get; private set; }  // The element attributes (can be modified)      
         public string TagName { get; private set; }                         // The element's tag name
-        public string Content { get; private set; }                      // The code inside the element
+        public string Content { get; private set; }                         // The code inside the element
         public int Length { get { return this.RawCode.Length; } }           // The element's length
-        public List<HtmlElement> InnerElements { get { } }
+        public List<HtmlElement> InnerElements { get { return this.GetInnerElements(); } }
 
         private string code;        // code to work on
 
@@ -148,14 +160,79 @@ namespace website_downloader_tests
             }
         }
 
-
         /// <summary>
         /// Returns all elements inside the (None recursively)
+        /// 
+        /// TODO: Make it work with e,pty html elements such as img
         /// </summary>
         /// <returns>All elements inside the (None recursively)</returns>
         private List<HtmlElement> GetInnerElements()
         {
-            throw new NotImplementedException();
+            var elements = new List<HtmlElement>();     // All the inner elements
+
+            string code = this.Content;
+
+            // Find all the elements inside the code
+            var tempTagNames = new Stack<string>();     // Used to recognize where the tag starts and ends
+            int firstIndex;
+            string tagName, tagStart, tagEnd;
+            while (code.Contains(">")) 
+            {
+                firstIndex = code.IndexOf("<");
+                // Find the end of the tag name
+                int tagNameEnd;
+                int spaceIndex = code.IndexOf(" ", firstIndex);
+                int smallerCharIndex = code.IndexOf(">", firstIndex);
+                if (spaceIndex == -1)
+                    tagNameEnd = smallerCharIndex;    // If space does not exists, pick the '<' sign index
+                else
+                    tagNameEnd = Math.Min(spaceIndex, smallerCharIndex);    // If space exists, pick the closer index to the start
+                tagName = code.Slice(firstIndex + 1, tagNameEnd);
+                tempTagNames.Push(tagName);     
+                tagStart = "<" + tagName;       // Each tag inside should start like this
+                tagEnd = "</" + tagName + ">";  // Each tag inside should end like this
+
+                // As long as the stack is not empty, keep looking for the end of the tag
+                int currentIndex = firstIndex + tagStart.Length, lastIndex = -1;
+                while (tempTagNames.Count > 0)
+                {
+                    int tagStartIndex = code.IndexOf(tagStart, currentIndex);
+                    int tagEndIndex = code.IndexOf(tagEnd, currentIndex);                    
+                    if (tagEndIndex == -1 && tagStartIndex == -1)
+                        throw new Exception("An Error occured");
+                    else if (tagEndIndex == -1)
+                        tagEndIndex = int.MaxValue;
+                    else if (tagStartIndex == -1)
+                        tagStartIndex = int.MaxValue;
+
+                    // In case the next tag is an end tag
+                    if (tagEndIndex < tagStartIndex)
+                    {
+                        tempTagNames.Pop();
+                        currentIndex = tagEndIndex + tagEnd.Length;
+                    }
+
+                    // In case the next tag is an open tag
+                    else
+                    {
+                        tempTagNames.Push(tagName);
+                        currentIndex = tagStartIndex + tagStart.Length;
+                    }
+
+                    if (tempTagNames.Count == 0)
+                        lastIndex = code.IndexOf(">", tagEndIndex);
+
+                    
+                }
+
+                // Add the element to the list
+                var element = new HtmlElement(code.Slice(firstIndex, lastIndex + 1));
+                elements.Add(element);
+
+                code = code.Substring(lastIndex + 1);
+            }
+
+            return elements;
         }
         #endregion
 

@@ -11,11 +11,13 @@ namespace website_downloader_tests
     {
         static void Main(string[] args)
         {
-            string code = "<img sRc=\"auto:blank\" style='width: 100%'>";
-            var htmlElement = new HtmlElement(code);
-            htmlElement.Attributes["src"] = "Hello world";
-            htmlElement.Attributes["style"] = "width: 50%";
-            Console.WriteLine(htmlElement);
+            string code = @"";
+            var element = new HtmlElement(code);
+
+            foreach (HtmlElement e in element.InnerElements)
+            {
+                Console.WriteLine("\n{0}\n{1}\n", e.TagName, e.Content);
+            }
         }
     }
 }

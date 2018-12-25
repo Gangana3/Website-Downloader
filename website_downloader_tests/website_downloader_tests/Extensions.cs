@@ -11,6 +11,7 @@ namespace website_downloader_tests
     /// </summary>
     static class Extensions
     {
+        #region String Extensions
         /// <summary>
         /// Slices the string from the start index to end index.
         /// "hello world".Slice(1, 4) -> "ell"
@@ -52,5 +53,22 @@ namespace website_downloader_tests
 
             return result.Slice(startIndex, endIndex + 1);
         }
+        #endregion
+
+        #region StringBuilder extensions
+        /// <summary>
+        /// Slices the given instance of StringBuilder.
+        /// For example "hello world".Slice(1, 4) -> "ell"
+        /// </summary>
+        /// <param name="builder">string builder to slice</param>
+        /// <param name="startIndex">index to start at</param>
+        /// <param name="endIndex">index to end</param>
+        public static void Slice(this StringBuilder builder, int startIndex, int endIndex)
+        {
+            builder.Remove(endIndex, builder.Length - endIndex);    // Remove the end first
+            builder.Remove(0, startIndex);                          // Remove the start
+        }
+
+        #endregion
     }
 }
