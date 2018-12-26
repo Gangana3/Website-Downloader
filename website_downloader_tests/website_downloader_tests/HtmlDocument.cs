@@ -17,7 +17,7 @@ namespace website_downloader_tests
         public static readonly string[] NoContentElements = { "area", "base", "basefont", "br", "col", "frame", "hr", "img", "input", "isindex", "meta", "param" };
 
         public string HtmlCode { get; private set; }                                            // The Html Code                  
-        public string CodeWithoutComments { get { return this.GetCodeWithoutComments(); } }     // The html Code without comments
+        private string CodeWithoutComments { get { return this.GetCodeWithoutComments(); } }    // The html Code without comments
 
         public HtmlDocument(string htmlCode)
         {
@@ -28,15 +28,43 @@ namespace website_downloader_tests
         /// Returns all elements with given tag name.
         /// </summary>
         /// <returns>All elements with given tag name.</returns>
-        public List<HtmlElement> GetElementsByTagName(string tagName)
+        public IEnumerable<HtmlElement> GetElementsByTagName(string tagName)
         {
-            throw new NotImplementedException();
+            foreach (HtmlElement element in this.GetAllElements())
+                if (element.TagName == tagName)
+                    yield return element;
         }
 
+
+        /// <summary>
+        /// Returns all the elements in the code that has an attribute as mentiond
+        /// </summary>
+        /// <param name="attributeName">Name of the attribute such as 'src', 'href' etc...</param>
+        /// <returns> All the elements in the code that has an attribute as mentiond</returns>
+        public IEnumerable<HtmlElement> GetElementsByAttribute(string attributeName)
+        {
+            foreach (HtmlElement element in this.GetAllElements())
+                if (element.Attributes.Keys.Any(key => key == attributeName))
+                    yield return element;
+        }
+
+
+        /// <summary>
+        /// Returns all elements
+        /// </summary>
+        /// <returns>All elements in the html code</returns>
         public IEnumerable<HtmlElement> GetAllElements()
         {
-            throw new NotImplementedException();
+            string code = this.CodeWithoutComments;
+            code = code.Substring(code.IndexOf("<html"));
+            var htmlElement = new HtmlElement(code);
+            yield return htmlElement;   // Return the main element (html)
+
+            // Return all the elements one by one
+            foreach (HtmlElement element in htmlElement.InnerElements)
+                yield return element;
         }
+
 
         #region Private Methods
         /// <summary>
@@ -45,7 +73,16 @@ namespace website_downloader_tests
         /// <returns></returns>
         private string GetCodeWithoutComments()
         {
-            throw new NotImplementedException();
+            string code = this.HtmlCode;
+            
+            while (code.Contains("<!--"))
+            {
+                int start = code.IndexOf("<!--");
+                int end = code.IndexOf("-->");
+                code = code.Remove(start, end - start + 3);
+            }
+
+            return code;
         }
         #endregion
     }
@@ -61,7 +98,7 @@ namespace website_downloader_tests
         public string TagName { get; private set; }                         // The element's tag name
         public string Content { get; private set; }                         // The code inside the element
         public int Length { get { return this.RawCode.Length; } }           // The element's length
-        public IEnumerable<HtmlElement> InnerElements { get { return this.GetInnerElements(); } }
+        public IEnumerable<HtmlElement> InnerElements { get { return this.GetInnerElements(); } }   // All the elements inside this element
 
         private string code;        // code to work on
 
@@ -174,7 +211,7 @@ namespace website_downloader_tests
             var elementIndexes = new Stack<int>();      // Used to temporarely store the indexes of where the elements start
             int currentIndex = 0;                       // Current index in the html code
             int lastIndex = -1;                         // Last index checked
-            do
+            while (code.IndexOf('<', currentIndex) != -1) 
             {
                 int lessCharacterIndex = code.IndexOf("<", currentIndex);
                 // In case closing Tag
@@ -207,7 +244,7 @@ namespace website_downloader_tests
                 }
 
                 currentIndex = lastIndex;   // Continue checking from the next relevant index
-            } while (code.IndexOf('<', currentIndex) != -1);
+            } 
         }
         #endregion
 

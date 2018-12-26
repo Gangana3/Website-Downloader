@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using HtmlAgilityPack;
+using System.Net;
+using System.IO;
 
 namespace website_downloader_tests
 {
@@ -11,13 +12,18 @@ namespace website_downloader_tests
     {
         static void Main(string[] args)
         {
-            string code = @"<body><div>Hello World <div> <p> </p> </div></div><img src='auto:blank'/> <table> <tr> <td> </td> </tr> </table></body>";
-            var element = new HtmlElement(code);
+            string path = @"C:\Users\ganga\Desktop\index.html";
+            using (var client = new WebClient())
+                client.DownloadFile("https://en.wikipedia.org/wiki/C_Sharp_(programming_language)", path);
+            string code = string.Empty;
+            using (var sr = new StreamReader(path))
+                code = sr.ReadToEnd();
 
-            foreach (HtmlElement e in element.InnerElements)
-            {
-                Console.WriteLine("{0}", e.TagName);
-            }
+            var htmlCode = new HtmlDocument(code);
+            foreach (HtmlElement element in htmlCode.GetElementsByTagName("img"))
+                Console.WriteLine(element.Attributes["src"]);
+
+
         }
     }
 }
