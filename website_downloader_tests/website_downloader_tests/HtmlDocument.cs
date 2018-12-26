@@ -61,7 +61,7 @@ namespace website_downloader_tests
         public string TagName { get; private set; }                         // The element's tag name
         public string Content { get; private set; }                         // The code inside the element
         public int Length { get { return this.RawCode.Length; } }           // The element's length
-        public List<HtmlElement> InnerElements { get { return this.GetInnerElements(); } }
+        public IEnumerable<HtmlElement> InnerElements { get { return this.GetInnerElements(); } }
 
         private string code;        // code to work on
 
@@ -164,89 +164,50 @@ namespace website_downloader_tests
         }
 
         /// <summary>
-        /// Returns all elements inside the (None recursively)
-        /// 
-        /// TODO: Make it work with e,pty html elements such as img
+        /// Returns all elements inside the currentElement
         /// </summary>
         /// <returns>All elements inside the (None recursively)</returns>
-        private List<HtmlElement> GetInnerElements()
+        private IEnumerable<HtmlElement> GetInnerElements()
         {
-            var elements = new List<HtmlElement>();     // All the inner elements
+            string code = this.Content;                 // Code to work on
 
-            string code = this.Content;
-
-            // Find all the elements inside the code
-            var tempTagNames = new Stack<string>();     // Used to recognize where the tag starts and ends
-            int firstIndex;
-            string tagName, tagStart, tagEnd;
-            while (code.Contains(">")) 
+            var elementIndexes = new Stack<int>();      // Used to temporarely store the indexes of where the elements start
+            int currentIndex = 0;                       // Current index in the html code
+            int lastIndex = -1;                         // Last index checked
+            do
             {
-                firstIndex = code.IndexOf("<");
-                // Find the end of the tag name
-                int tagNameEnd;
-                int spaceIndex = code.IndexOf(" ", firstIndex);
-                int smallerCharIndex = code.IndexOf(">", firstIndex);
-                if (spaceIndex == -1)
-                    tagNameEnd = smallerCharIndex;    // If space does not exists, pick the '<' sign index
-                else
-                    tagNameEnd = Math.Min(spaceIndex, smallerCharIndex);    // If space exists, pick the closer index to the start
-                tagName = code.Slice(firstIndex + 1, tagNameEnd);
-
-                int lastIndex = -1;     // The index of the '>' character that closes the tag
-                // In case the element contains no content
-                if (HtmlDocument.NoContentElements.Any(tag => tag == tagName))
+                int lessCharacterIndex = code.IndexOf("<", currentIndex);
+                // In case closing Tag
+                if (code[lessCharacterIndex + 1] == '/')
                 {
-                    lastIndex = code.IndexOf('>', firstIndex + 1);
+                    int firstIndex = elementIndexes.Pop();                  // First index of the element
+                    lastIndex = code.IndexOf('>', lessCharacterIndex);      // Last index of the element
+
+                    var htmlElement = new HtmlElement(code.Slice(firstIndex, lastIndex + 1));
+                    yield return htmlElement;
                 }
-                // In case the element can contain content
+                // In case opening tag
                 else
                 {
-                    tempTagNames.Push(tagName);
-                    tagStart = "<" + tagName;       // Each tag inside should start like this
-                    tagEnd = "</" + tagName + ">";  // Each tag inside should end like this
-
-                    // As long as the stack is not empty, keep looking for the end of the tag
-                    int currentIndex = firstIndex + tagStart.Length;
-                    while (tempTagNames.Count > 0)
+                    // In case the element can't have content (such as img elements)
+                    if (HtmlDocument.NoContentElements.Any(tag => code.Substring(lessCharacterIndex + 1).StartsWith(tag)))
                     {
-                        int tagStartIndex = code.IndexOf(tagStart, currentIndex);
-                        int tagEndIndex = code.IndexOf(tagEnd, currentIndex);
-                        if (tagEndIndex == -1 && tagStartIndex == -1)
-                            throw new Exception("An Error occured");
-                        else if (tagEndIndex == -1)
-                            tagEndIndex = int.MaxValue;
-                        else if (tagStartIndex == -1)
-                            tagStartIndex = int.MaxValue;
+                        lastIndex = code.IndexOf('>', lessCharacterIndex);
+                        var htmlElement = new HtmlElement(code.Slice(lessCharacterIndex, lastIndex + 1));
+                        yield return htmlElement;
+                    }
+                    // In case the element can have content (such as div element)
+                    else
+                    {
+                        int firstIndex = lessCharacterIndex;
+                        elementIndexes.Push(firstIndex);
 
-                        // In case the next tag is an end tag
-                        if (tagEndIndex < tagStartIndex)
-                        {
-                            tempTagNames.Pop();
-                            currentIndex = tagEndIndex + tagEnd.Length;
-                        }
-
-                        // In case the next tag is an open tag
-                        else
-                        {
-                            tempTagNames.Push(tagName);
-                            currentIndex = tagStartIndex + tagStart.Length;
-                        }
-
-                        if (tempTagNames.Count == 0)
-                            lastIndex = code.IndexOf(">", tagEndIndex);
-
-
+                        lastIndex = firstIndex + 1;
                     }
                 }
 
-                // Add the element to the list
-                var element = new HtmlElement(code.Slice(firstIndex, lastIndex + 1));
-                elements.Add(element);
-
-                code = code.Substring(lastIndex + 1);
-            }
-
-            return elements;
+                currentIndex = lastIndex;   // Continue checking from the next relevant index
+            } while (code.IndexOf('<', currentIndex) != -1);
         }
         #endregion
 
