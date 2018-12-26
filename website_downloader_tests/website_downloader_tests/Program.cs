@@ -11,12 +11,12 @@ namespace website_downloader_tests
     {
         static void Main(string[] args)
         {
-            string code = @"";
+            string code = @"<body><div> <div> Hello World!</div></div><img src='auto:blank'/> <div> <div> hi </div> </div> </body>";
             var element = new HtmlElement(code);
 
             foreach (HtmlElement e in element.InnerElements)
             {
-                Console.WriteLine("\n{0}\n{1}\n", e.TagName, e.Content);
+                Console.WriteLine("{0}", e.RawCode);
             }
         }
     }

@@ -13,8 +13,11 @@ namespace website_downloader_tests
     /// </summary>
     class HtmlDocument
     {
-        public string HtmlCode { get; private set; }
-        public string CodeWithoutComments { get { return this.GetCodeWithoutComments(); } }
+        // All the elements that does not contain content
+        public static readonly string[] NoContentElements = { "area", "base", "basefont", "br", "col", "frame", "hr", "img", "input", "isindex", "meta", "param" };
+
+        public string HtmlCode { get; private set; }                                            // The Html Code                  
+        public string CodeWithoutComments { get { return this.GetCodeWithoutComments(); } }     // The html Code without comments
 
         public HtmlDocument(string htmlCode)
         {
@@ -156,7 +159,7 @@ namespace website_downloader_tests
         {
             get
             {
-                return this.code.Count((c) => c == '<') <= 1;
+                return HtmlDocument.NoContentElements.Any(tag => tag == this.TagName);
             }
         }
 
@@ -188,41 +191,52 @@ namespace website_downloader_tests
                 else
                     tagNameEnd = Math.Min(spaceIndex, smallerCharIndex);    // If space exists, pick the closer index to the start
                 tagName = code.Slice(firstIndex + 1, tagNameEnd);
-                tempTagNames.Push(tagName);     
-                tagStart = "<" + tagName;       // Each tag inside should start like this
-                tagEnd = "</" + tagName + ">";  // Each tag inside should end like this
 
-                // As long as the stack is not empty, keep looking for the end of the tag
-                int currentIndex = firstIndex + tagStart.Length, lastIndex = -1;
-                while (tempTagNames.Count > 0)
+                int lastIndex = -1;     // The index of the '>' character that closes the tag
+                // In case the element contains no content
+                if (HtmlDocument.NoContentElements.Any(tag => tag == tagName))
                 {
-                    int tagStartIndex = code.IndexOf(tagStart, currentIndex);
-                    int tagEndIndex = code.IndexOf(tagEnd, currentIndex);                    
-                    if (tagEndIndex == -1 && tagStartIndex == -1)
-                        throw new Exception("An Error occured");
-                    else if (tagEndIndex == -1)
-                        tagEndIndex = int.MaxValue;
-                    else if (tagStartIndex == -1)
-                        tagStartIndex = int.MaxValue;
+                    lastIndex = code.IndexOf('>', firstIndex + 1);
+                }
+                // In case the element can contain content
+                else
+                {
+                    tempTagNames.Push(tagName);
+                    tagStart = "<" + tagName;       // Each tag inside should start like this
+                    tagEnd = "</" + tagName + ">";  // Each tag inside should end like this
 
-                    // In case the next tag is an end tag
-                    if (tagEndIndex < tagStartIndex)
+                    // As long as the stack is not empty, keep looking for the end of the tag
+                    int currentIndex = firstIndex + tagStart.Length;
+                    while (tempTagNames.Count > 0)
                     {
-                        tempTagNames.Pop();
-                        currentIndex = tagEndIndex + tagEnd.Length;
+                        int tagStartIndex = code.IndexOf(tagStart, currentIndex);
+                        int tagEndIndex = code.IndexOf(tagEnd, currentIndex);
+                        if (tagEndIndex == -1 && tagStartIndex == -1)
+                            throw new Exception("An Error occured");
+                        else if (tagEndIndex == -1)
+                            tagEndIndex = int.MaxValue;
+                        else if (tagStartIndex == -1)
+                            tagStartIndex = int.MaxValue;
+
+                        // In case the next tag is an end tag
+                        if (tagEndIndex < tagStartIndex)
+                        {
+                            tempTagNames.Pop();
+                            currentIndex = tagEndIndex + tagEnd.Length;
+                        }
+
+                        // In case the next tag is an open tag
+                        else
+                        {
+                            tempTagNames.Push(tagName);
+                            currentIndex = tagStartIndex + tagStart.Length;
+                        }
+
+                        if (tempTagNames.Count == 0)
+                            lastIndex = code.IndexOf(">", tagEndIndex);
+
+
                     }
-
-                    // In case the next tag is an open tag
-                    else
-                    {
-                        tempTagNames.Push(tagName);
-                        currentIndex = tagStartIndex + tagStart.Length;
-                    }
-
-                    if (tempTagNames.Count == 0)
-                        lastIndex = code.IndexOf(">", tagEndIndex);
-
-                    
                 }
 
                 // Add the element to the list
