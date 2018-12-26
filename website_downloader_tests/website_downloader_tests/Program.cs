@@ -20,8 +20,8 @@ namespace website_downloader_tests
                 code = sr.ReadToEnd();
 
             var htmlCode = new HtmlDocument(code);
-            foreach (HtmlElement element in htmlCode.GetElementsByTagName("img"))
-                Console.WriteLine(element.Attributes["src"]);
+            foreach (HtmlElement element in htmlCode.GetElementsByAttribute("src"))
+                Console.WriteLine(element.TagName);
 
 
         }
