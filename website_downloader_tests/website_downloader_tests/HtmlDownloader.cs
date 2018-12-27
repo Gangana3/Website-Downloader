@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Net;
 
@@ -48,7 +48,7 @@ namespace website_downloader_tests
         {
             foreach (HtmlElement imgTag in htmlDoc.GetElementsByTagName("img"))
             {
-
+                string link = imgTag.Attributes["src"];
             }
         }
 
@@ -57,13 +57,33 @@ namespace website_downloader_tests
         /// <summary>
         /// Returns the absolute Url of the relative url.
         /// for example:
-        ///     baseUrl = "https://www.google.com", relativeUrl = "/helloworld"     -> "https://www.google.com/helloworld"
+        ///     current = "https://www.google.com", relativeUrl = "/helloworld"     -> "https://www.google.com/helloworld"
         /// </summary>
         /// <param name="baseUrl"></param>
         /// <param name="relativeUrl"></param>
-        private static void GetAbsoluteUrl(string baseUrl, string relativeUrl)
+        public static string GetAbsoluteUrl(string currentUrl, string relativeUrl)
         {
-            throw new NotImplementedException();
+            // Get base url, for example 'https://www.google.com/foo/foo1/foo2' -> base url = 'https://www.google.com'
+            string baseUrl = Regex.Match(currentUrl, @"https?://[a-zA-Z\.]*").Groups[0].Value;
+            bool isSecured = baseUrl.StartsWith("https");
+
+            // In case starts with double slash
+            if (relativeUrl.StartsWith("//"))
+            {
+                if (isSecured)
+                    return "https:" + relativeUrl;
+                else
+                    return "http:" + relativeUrl;
+            }
+            // In case starts with slash
+            else if (relativeUrl.StartsWith("/"))
+                return baseUrl + relativeUrl;
+            // in case the relative url is actually an absolute url
+            else if (relativeUrl.StartsWith("http://") || relativeUrl.StartsWith("https://"))
+                return relativeUrl;
+            // In case the relative url is just a relative url
+            else
+                return currentUrl + relativeUrl;
         }
         #endregion
     }
