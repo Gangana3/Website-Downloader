@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Net;
+using System.IO;
 
 namespace website_downloader_tests
 {
@@ -12,22 +13,29 @@ namespace website_downloader_tests
     /// to download all of it's resources so we could view the
     /// html page offline.
     /// </summary>
-    class HtmlDownloader
+    class UrlDownloader
     {
         // Public Properties
         public string HtmlCode { get; private set; }    // Html code
 
+        public string Url { get; private set; }
+
         // Private fields
         private HtmlDocument htmlDoc;
+        private WebClient webClient;
 
         /// <summary>
-        /// Instantiate HtmlCode class
+        /// Instantiate a UrlDownloader object
         /// </summary>
-        /// <param name="code">Html code to parse and handle</param>
-        public HtmlDownloader(string htmlCode)
+        /// <param name="url">Url to the page</param>
+        public UrlDownloader(string url, string html="")
         {
-            this.HtmlCode = htmlCode;
-            this.htmlDoc = new HtmlDocument(htmlCode);
+            this.webClient = new WebClient();
+            if (string.IsNullOrEmpty(html))
+                html = this.webClient.DownloadString(url);
+            this.Url = url;
+            this.HtmlCode = html;
+            this.htmlDoc = new HtmlDocument(html);
         }
 
         /// <summary>
@@ -46,9 +54,15 @@ namespace website_downloader_tests
         /// <param name="path">path to download the images to</param>
         public void DownloadImages(string path)
         {
+            int id = 0;
             foreach (HtmlElement imgTag in htmlDoc.GetElementsByTagName("img"))
             {
-                string link = imgTag.Attributes["src"];
+                string href = imgTag.Attributes["src"];
+                string url = GetAbsoluteUrl(this.Url, href);
+
+                string fileName = Path.Combine(path, string.Format("{0}", id));
+                id++;
+                this.webClient.DownloadFile(url, fileName);
             }
         }
 
@@ -61,7 +75,7 @@ namespace website_downloader_tests
         /// </summary>
         /// <param name="baseUrl"></param>
         /// <param name="relativeUrl"></param>
-        public static string GetAbsoluteUrl(string currentUrl, string relativeUrl)
+        private static string GetAbsoluteUrl(string currentUrl, string relativeUrl)
         {
             // Get base url, for example 'https://www.google.com/foo/foo1/foo2' -> base url = 'https://www.google.com'
             string baseUrl = Regex.Match(currentUrl, @"https?://[a-zA-Z\.]*").Groups[0].Value;
@@ -81,6 +95,9 @@ namespace website_downloader_tests
             // in case the relative url is actually an absolute url
             else if (relativeUrl.StartsWith("http://") || relativeUrl.StartsWith("https://"))
                 return relativeUrl;
+            // In case the relative url starts with '..'
+            else if (relativeUrl.StartsWith(".."))
+                return currentUrl.Slice(0, currentUrl.LastIndexOf('/', currentUrl.Length - 2) + 1) + relativeUrl;
             // In case the relative url is just a relative url
             else
                 return currentUrl + relativeUrl;
