@@ -60,8 +60,9 @@ namespace website_downloader_tests
                 string href = imgTag.Attributes["src"];
                 string url = GetAbsoluteUrl(this.Url, href);
 
-                string fileName = Path.Combine(path, string.Format("{0}", id));
+                string fileName = Path.Combine(path, id.ToString());
                 id++;
+                Console.WriteLine("Downloading {0} and saves it as {1}", url, fileName);     // Debug message
                 this.webClient.DownloadFile(url, fileName);
             }
         }
@@ -78,7 +79,7 @@ namespace website_downloader_tests
         private static string GetAbsoluteUrl(string currentUrl, string relativeUrl)
         {
             // Get base url, for example 'https://www.google.com/foo/foo1/foo2' -> base url = 'https://www.google.com'
-            string baseUrl = Regex.Match(currentUrl, @"https?://[a-zA-Z\.]*").Groups[0].Value;
+            string baseUrl = Regex.Match(currentUrl, @"https?://[a-zA-Z\.0-9]*").Groups[0].Value;
             bool isSecured = baseUrl.StartsWith("https");
 
             // In case starts with double slash
