@@ -150,7 +150,7 @@ namespace website_downloader_tests
                     relativeUrl = relativeUrl.Substring(relativeUrl.IndexOf('/') + 1);
                 }
                 resultUrl += "/" + relativeUrl;     // Add the relative url to the result
-                return resultUrl
+                return resultUrl;
             }
             // In case the relative url is just a relative url
             else
