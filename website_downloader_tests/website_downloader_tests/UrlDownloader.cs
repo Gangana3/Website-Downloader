@@ -85,7 +85,7 @@ namespace website_downloader_tests
         /// </summary>
         public void Download()
         {
-            Console.WriteLine("DEBUG: css resources path: {0}", this.CssResourcesPath);
+            this.DownloadCss(this.CssPath);
         }
 
         /// <summary>
@@ -217,7 +217,9 @@ namespace website_downloader_tests
                 // In case url ends with '/', remove it
                 if (relativeUrl.EndsWith("/"))
                     relativeUrl.Remove(relativeUrl.Length - 1);
+
                 // Move backwards in the url
+                resultUrl = resultUrl.Remove(resultUrl.LastIndexOf('/'));
                 while (relativeUrl.StartsWith(".."))
                 {
                     resultUrl = resultUrl.Remove(resultUrl.LastIndexOf('/'));
@@ -321,11 +323,18 @@ namespace website_downloader_tests
                 // In case the resource was not downloaded yet
                 if (!this.IsDownloaded(absoluteUrl))
                 {
+                    Console.WriteLine("DEBUG: Downloading Css Resource {0}", absoluteUrl);
                     string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString());
                     this.RegisterDownload(absoluteUrl, filePath, Resource.CssResource);
-                    this.webClient.DownloadFile(url, filePath);
+                    try
+                    {
+                        this.webClient.DownloadFile(absoluteUrl, filePath);
 
-                    cssCode.Replace(url, GetRelativeUrl(filePath));    // Replace url by the local file
+                        cssCode.Replace(url, GetRelativeUrl(filePath));    // Replace url by the local file
+                    } catch (System.Net.WebException ex)
+                    {
+                        Console.WriteLine("DEBUG: ERROR: {0}", ex.Message);
+                    }
                 }
                 // In case this resource was already downloaded
                 else
@@ -344,8 +353,9 @@ namespace website_downloader_tests
                 {
                     string innerCssCode = this.webClient.DownloadString(url);
 
+                    Console.WriteLine("DEBUG: Downloading inner stylesheet {0}", absoluteUrl);
                     this.DownloadCssRecursively(innerCssCode, absoluteUrl);     // Recursively download the inner css file
-
+                    
                     int previousId = cssId - 1;     // The id of the inner css resource
                     cssCode.Replace(url, CssDirectoryName + "/" + previousId.ToString());   // Replace the url by the local location of the stylesheet
                 }
