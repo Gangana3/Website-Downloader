@@ -12,8 +12,8 @@ namespace website_downloader_tests
     {
         static void Main(string[] args)
         {
-            var downloader = new UrlDownloader("https://en.wikipedia.org/wiki/Benjamin_Netanyahu");
-            downloader.DownloadImages(@"C:\Users\ganga\Documents\try");
+            var downloader = new UrlDownloader("https://www.ynet.co.il/home/0,7340,L-8,00.html");
+            downloader.DownloadCss(@"C:\Users\ganga\Documents\try");
         }
     }
 }

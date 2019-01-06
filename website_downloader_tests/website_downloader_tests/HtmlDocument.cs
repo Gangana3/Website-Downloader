@@ -14,7 +14,9 @@ namespace website_downloader_tests
     class HtmlDocument
     {
         // All the elements that does not contain content
-        public static readonly string[] NoContentElements = { "area", "base", "basefont", "br", "col", "frame", "hr", "img", "input", "isindex", "meta", "param" };
+        public static readonly string[] NoContentElements = { "area", "base", "basefont", "br", "col", "frame", "hr", "img", "input", "isindex", "meta", "param", "link" };
+        // All elements that cannot contain inner elements 
+        public static readonly string[] NoInnerElements = { "style", "script", "noscript" };   
 
         public string HtmlCode { get; private set; }                                            // The Html Code                  
         private string CodeWithoutComments { get { return this.GetCodeWithoutComments(); } }    // The html Code without comments
@@ -37,7 +39,7 @@ namespace website_downloader_tests
 
 
         /// <summary>
-        /// Returns all the elements in the code that has an attribute as mentiond
+        /// Returns all the elements in the code that has an attribute as mentiond.
         /// </summary>
         /// <param name="attributeName">Name of the attribute such as 'src', 'href' etc...</param>
         /// <returns> All the elements in the code that has an attribute as mentiond</returns>
@@ -48,7 +50,11 @@ namespace website_downloader_tests
                     yield return element;
         }
 
-        
+        /// <summary>
+        /// Returns all the elements that the given predicate returns true for them.
+        /// </summary>
+        /// <param name="predicate">Predicate for filtering the elements </param>
+        /// <returns>All the elements that the given predicate returns true for them.</returns>
         public IEnumerable<HtmlElement> GetElementsBy(Predicate<HtmlElement> predicate)
         {
             foreach (HtmlElement element in this.GetAllElements())
@@ -158,9 +164,11 @@ namespace website_downloader_tests
             string declaration = this.code.Slice(firstIndex + 1, lastIndex);    //for example '<link href="">' -->  'link href=""'
             string rawAttributes = declaration.Slice(declaration.IndexOf(' ') + 1, declaration.Length); // for example: "src='auto:blank' style='width: 100%'"
 
+            string debug = rawAttributes;
+
             // Build the attributes dictionary
             var attributes = new Dictionary<string, string>();
-            while (rawAttributes.Contains('"') || rawAttributes.Contains('\''))
+            while ((rawAttributes.Contains('"') || rawAttributes.Contains('\'')) && rawAttributes.Contains('='))
             {
                 // if raw attributes starts with space, remove it
                 rawAttributes = rawAttributes.Strip();
@@ -210,7 +218,7 @@ namespace website_downloader_tests
         /// <summary>
         /// Returns all elements inside the currentElement
         /// </summary>
-        /// <returns>All elements inside the (None recursively)</returns>
+        /// <returns>All elements inside the current element</returns>
         private IEnumerable<HtmlElement> GetInnerElements()
         {
             string code = this.Content;                 // Code to work on
@@ -218,6 +226,8 @@ namespace website_downloader_tests
             var elementIndexes = new Stack<int>();      // Used to temporarely store the indexes of where the elements start
             int currentIndex = 0;                       // Current index in the html code
             int lastIndex = -1;                         // Last index checked
+            string currentTagName;
+
             while (code.IndexOf('<', currentIndex) != -1) 
             {
                 int lessCharacterIndex = code.IndexOf("<", currentIndex);
@@ -233,8 +243,19 @@ namespace website_downloader_tests
                 // In case opening tag
                 else
                 {
+                    // Get the tag name
+                    currentTagName = Regex.Match(code.Substring(lessCharacterIndex + 1), @"([a-z]*)[> ]").Groups[1].Value;
+
+                    // In case the element can't contain any inner elements
+                    if (HtmlDocument.NoInnerElements.Contains(currentTagName))
+                    {
+                        string closingTag = string.Format("</{0}>", currentTagName);
+                        lastIndex = code.IndexOf(closingTag, lessCharacterIndex) + closingTag.Length;
+                        var htmlElement = new HtmlElement(code.Slice(lessCharacterIndex, lastIndex));
+                        yield return htmlElement;
+                    }
                     // In case the element can't have content (such as img elements)
-                    if (HtmlDocument.NoContentElements.Any(tag => code.Substring(lessCharacterIndex + 1).StartsWith(tag)))
+                    else if (HtmlDocument.NoContentElements.Contains(currentTagName))
                     {
                         lastIndex = code.IndexOf('>', lessCharacterIndex);
                         var htmlElement = new HtmlElement(code.Slice(lessCharacterIndex, lastIndex + 1));

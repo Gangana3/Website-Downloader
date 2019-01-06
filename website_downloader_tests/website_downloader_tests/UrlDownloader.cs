@@ -71,14 +71,14 @@ namespace website_downloader_tests
             foreach (HtmlElement imgTag in htmlDoc.GetElementsByTagName("img"))
             {
                 string href = imgTag.Attributes["src"];         // Get the href attribute from the element
-                string url = GetAbsoluteUrl(this.Url, href);    // Get the absolute url from the given url
+                string absoluteUrl = GetAbsoluteUrl(this.Url, href);    // Get the absolute url from the given url
 
-                if (!this.IsDownloaded(url))
+                if (!this.IsDownloaded(absoluteUrl))
                 {
-                    Console.WriteLine("DEBUG: Downloading {0}", url);
-                    string fileName = Path.Combine(path, imgId.ToString());
-                    this.RegisterDownload(url, fileName, Resource.Img);
-                    this.webClient.DownloadFile(url, fileName);
+                    Console.WriteLine("DEBUG: Downloading {0}", absoluteUrl);
+                    string filePath = Path.Combine(path, imgId.ToString());     // The local file path
+                    this.RegisterDownload(absoluteUrl, filePath, Resource.Img);
+                    this.webClient.DownloadFile(absoluteUrl, filePath);
                 }
             }
         }
@@ -87,10 +87,23 @@ namespace website_downloader_tests
         /// Downloads the Stylesheets from the given url, Including the resources that
         /// The stylesheet uses like another stylesheets, images etc...
         /// </summary>
-        public void DownloadStylesheets(string path)
+        public void DownloadCss(string path)
         {
             // At first, download the stylesheets by their links at the html document
+            bool FilterLinks(HtmlElement e) => e.Attributes.Keys.Contains("rel") && e.Attributes["rel"].ToLower() == "stylesheet" && e.Attributes.Keys.Contains("href");
+            foreach (HtmlElement element in htmlDoc.GetElementsBy(FilterLinks))
+            {
+                string absoluteUrl = GetAbsoluteUrl(this.Url, element.Attributes["href"]);
 
+                if (!this.IsDownloaded(absoluteUrl))
+                {
+                    Console.WriteLine("DEBUG: Downloading {0}", absoluteUrl);
+
+                    string filePath = Path.Combine(path, cssId.ToString());         // Name of the local file
+                    this.RegisterDownload(absoluteUrl, filePath, Resource.Css);
+                    this.webClient.DownloadFile(absoluteUrl, filePath);
+                }
+            }
         }
 
 
@@ -105,13 +118,15 @@ namespace website_downloader_tests
                 if (element.Attributes.Keys.Contains("src"))
                 {
                     string src = element.Attributes["src"];
-                    string url = GetAbsoluteUrl(this.Url, src);
+                    string absoluteurl = GetAbsoluteUrl(this.Url, src);
 
-                    if (!this.IsDownloaded(url))
+                    if (!this.IsDownloaded(absoluteurl))
                     {
-                        string fileName = Path.Combine(path, this.jsId.ToString());
-                        this.webClient.DownloadFile(url, fileName);
-                        this.RegisterDownload(url, fileName, Resource.Js);
+                        Console.WriteLine("DEBUG: Downloading {0}", absoluteurl);
+
+                        string filePath = Path.Combine(path, this.jsId.ToString());     // The local file path
+                        this.webClient.DownloadFile(absoluteurl, filePath);
+                        this.RegisterDownload(absoluteurl, filePath, Resource.Js);
                     }
                 }
             }
