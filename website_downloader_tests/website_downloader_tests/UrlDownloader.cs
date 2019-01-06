@@ -21,45 +21,71 @@ namespace website_downloader_tests
     /// </summary>
     class UrlDownloader
     {
-        private static readonly object lockObj = new object();
+        // Names
+        private static readonly string CssDirectoryName = "css";        // The name of the directory that contains the css
+        private static readonly string JsDirectoryName = "js";          // The name of the directory that contains the javascript files
+        private static readonly string ImgsDirectoryName = "images";    // The name of the directory that contains the images
+        private static readonly string CssResourcesDirectoryName = "css_resources";   // A directory that contains the files that the css file use
+        private static readonly string MainPageName = "index.html";     // The name of the local page
 
         // Public Properties
         public string HtmlCode { get; private set; }    // Html code
         public string Url { get; private set; }         // Url to download
 
         // Private fields
+        private string basePath;
         private HtmlDocument htmlDoc;                           // Parsed html page
         private WebClient webClient;                            // Http client for downloading the pages
         private int imgId = 0;                                  // Used for naming the images files
         private int jsId = 0;                                   // Used for naming the javascript files
         private int cssId = 0;                                  // Used for naming the css files
-        private enum Resource { Img, Css, Js };                 // Kinds of resources that can exist
+        private int cssResourceId = 0;                          // Used for naming the resources inside the css files
+        private enum Resource { Img, Css, Js, CssResource };    // Kinds of resources that can exist
         private Dictionary<string, string> resourcesNames;      // mapping between the downloaded url and local resource path
 
+
+        // Private properties
+        private string CssResourcesPath { get { return Path.Combine(this.basePath, CssResourcesDirectoryName); } }
+        private string CssPath { get { return Path.Combine(this.basePath, CssDirectoryName); } }
+        private string JsPath { get { return Path.Combine(this.basePath, JsDirectoryName); } }
+        private string ImgsPath { get { return Path.Combine(this.basePath, ImgsDirectoryName); } }
+
         /// <summary>
-        /// Instantiate a UrlDownloader object
+        /// Url Downloader constructor
         /// </summary>
-        /// <param name="url">Url to the page</param>
-        public UrlDownloader(string url, string html="")
+        /// <param name="url">a url that the client want to download</param>
+        /// <param name="path">Destination path</param>
+        public UrlDownloader(string url, string path, string websiteName = "Downloaded Website")
         {
             this.webClient = new WebClient();
-            if (string.IsNullOrEmpty(html))
-                html = this.webClient.DownloadString(url);
+            string html = this.webClient.DownloadString(url);
             this.Url = url;
             this.HtmlCode = html;
-
-            this.htmlDoc = new HtmlDocument(html);
+            this.htmlDoc = new HtmlDocument(html);                      // Parse the html code
             this.resourcesNames = new Dictionary<string, string>();
+
+            // Create a new main directory
+            this.basePath = Path.Combine(path, websiteName);
+            if (Directory.Exists(this.basePath))
+                throw new IOException(string.Format("{0} already exists!", this.basePath));
+            else
+                Directory.CreateDirectory(basePath);
+
+            // Create sub directories
+            Directory.CreateDirectory(this.CssPath);            // Create a directory for css files
+            Directory.CreateDirectory(this.JsPath);             // Create a directroy for javascript files
+            Directory.CreateDirectory(this.ImgsPath);           // Create a directory for images
+            Directory.CreateDirectory(this.CssResourcesPath);   // Create a directory for resources retrieved from the css file
+
         }
 
         /// <summary>
         /// Downloads the html file with all of the resources.
         /// Images, Javascripts etc...
         /// </summary>
-        /// <param name="path">The location in which the webpage will be saved</param>
-        public void Download(string path)
+        public void Download()
         {
-
+            Console.WriteLine("DEBUG: css resources path: {0}", this.CssResourcesPath);
         }
 
         /// <summary>
@@ -89,7 +115,6 @@ namespace website_downloader_tests
         /// </summary>
         public void DownloadCss(string path)
         {
-            // At first, download the stylesheets by their links at the html document
             bool FilterLinks(HtmlElement e) => e.Attributes.Keys.Contains("rel") && e.Attributes["rel"].ToLower() == "stylesheet" && e.Attributes.Keys.Contains("href");
             foreach (HtmlElement element in htmlDoc.GetElementsBy(FilterLinks))
             {
@@ -97,11 +122,9 @@ namespace website_downloader_tests
 
                 if (!this.IsDownloaded(absoluteUrl))
                 {
-                    Console.WriteLine("DEBUG: Downloading {0}", absoluteUrl);
+                    Console.WriteLine("DEBUG: Downloading Css {0}", absoluteUrl);
 
-                    string filePath = Path.Combine(path, cssId.ToString());         // Name of the local file
-                    this.RegisterDownload(absoluteUrl, filePath, Resource.Css);
-                    this.webClient.DownloadFile(absoluteUrl, filePath);
+                    this.DownloadCssRecursively(this.webClient.DownloadString(absoluteUrl), absoluteUrl);
                 }
             }
         }
@@ -110,7 +133,7 @@ namespace website_downloader_tests
         /// <summary>
         /// Downloads the javascript from the html page
         /// </summary>
-        public void DownloadJS(string path)
+        public void DownloadJs(string path)
         {
             foreach (HtmlElement element in htmlDoc.GetElementsByTagName("script"))
             {
@@ -118,23 +141,48 @@ namespace website_downloader_tests
                 if (element.Attributes.Keys.Contains("src"))
                 {
                     string src = element.Attributes["src"];
-                    string absoluteurl = GetAbsoluteUrl(this.Url, src);
+                    string absoluteUrl = GetAbsoluteUrl(this.Url, src);
 
-                    if (!this.IsDownloaded(absoluteurl))
+                    if (!this.IsDownloaded(absoluteUrl))
                     {
-                        Console.WriteLine("DEBUG: Downloading {0}", absoluteurl);
+                        Console.WriteLine("DEBUG: Downloading {0}", absoluteUrl);
 
                         string filePath = Path.Combine(path, this.jsId.ToString());     // The local file path
-                        this.webClient.DownloadFile(absoluteurl, filePath);
-                        this.RegisterDownload(absoluteurl, filePath, Resource.Js);
+                        this.webClient.DownloadFile(absoluteUrl, filePath);
+                        this.RegisterDownload(absoluteUrl, filePath, Resource.Js);
                     }
                 }
             }
-                
+
         }
 
 
         #region Private Methods
+
+        /// <summary>
+        /// Returns a relative url of a downloaded file, the result url
+        /// is relative to the main page file.
+        /// </summary>
+        /// <returns>Relative url of a downloaded file</returns>
+        private static string GetRelativeUrl(string filePath)
+        {
+            string relativeDirectory = string.Empty;
+            // In case filePath contains the path to a css resource
+            if (filePath.Contains(CssResourcesDirectoryName))
+                relativeDirectory = CssResourcesDirectoryName;
+            // In case filePath contains the path to a css file
+            else if (filePath.Contains(CssDirectoryName))
+                relativeDirectory = CssDirectoryName;
+            // In case filePath contains the path to a javascript file
+            else if (filePath.Contains(JsDirectoryName))
+                relativeDirectory = JsDirectoryName;
+            // In case filePath contains the path to an image
+            else if (filePath.Contains(ImgsDirectoryName))
+                relativeDirectory = ImgsDirectoryName;
+
+            return Path.Combine(relativeDirectory, Path.GetFileName(filePath)).Replace(Path.DirectorySeparatorChar, '/');
+        }
+
         /// <summary>
         /// Returns the absolute Url of the relative url.
         /// for example:
@@ -194,15 +242,19 @@ namespace website_downloader_tests
             switch (resourceType)
             {
                 case Resource.Css:
-                    cssId++;     
+                    this.cssId++;
                     break;
 
                 case Resource.Img:
-                    imgId++;     
+                    this.imgId++;
                     break;
 
                 case Resource.Js:
-                    jsId++;      
+                    this.jsId++;
+                    break;
+
+                case Resource.CssResource:
+                    this.cssResourceId++;
                     break;
 
                 default:
@@ -221,6 +273,95 @@ namespace website_downloader_tests
         private bool IsDownloaded(string absoluteUrl)
         {
             return this.resourcesNames.Keys.Contains(absoluteUrl);
+        }
+
+
+        /// <summary>
+        /// Downloads the css resources. for example a css file may contain 'url("url/to/resource)"', in that case,
+        /// we have to download this resource
+        /// </summary>
+        /// <param name="cssCode"></param>
+        /// <returns></returns>
+        private void DownloadCssRecursively(string cssCode, string currentUrl)
+        {
+            // Regexes for finding the resources used inside the css code
+            var urlRegex = new Regex(@"url\([""']?([-a-zA-Z0-9@:%_\+.~#?&//=]*)[""']?\)");  // The url is in group[1]
+            var importRegex = new Regex(@"@import (?:url\()?[""']?([-a-zA-Z0-9@:%_\+.~#?&//=]*)[""']?\)?"); // The url is in group[1]
+
+            var resourcesUrlList = new List<string>();      // A list of all urls that are used
+            var importsUrlList = new List<string>();        // A list of the url of the imported css sheets
+
+            // Build the resources list
+            foreach (Match match in urlRegex.Matches(cssCode))
+            {
+                // In case the resources url list does not contain this url
+                string url = match.Groups[1].Value;
+                if (!resourcesUrlList.Contains(url))
+                    resourcesUrlList.Add(url);
+            }
+
+            // Build the imported urls list
+            foreach (Match match in importRegex.Matches(cssCode))
+            {
+                string url = match.Groups[1].Value;
+
+                // In case the import urls list does not contain this url
+                if (!importsUrlList.Contains(url))
+                    importsUrlList.Add(url);    // Add it to the list
+
+                // In case the resources url list contain this url
+                if (resourcesUrlList.Contains(url))
+                    resourcesUrlList.Remove(url);   // Remove it from the list
+            }
+
+            // Download all resources used in this stylesheet
+            foreach (string url in resourcesUrlList)
+            {
+                string absoluteUrl = GetAbsoluteUrl(currentUrl, url);
+                // In case the resource was not downloaded yet
+                if (!this.IsDownloaded(absoluteUrl))
+                {
+                    string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString());
+                    this.RegisterDownload(absoluteUrl, filePath, Resource.CssResource);
+                    this.webClient.DownloadFile(url, filePath);
+
+                    cssCode.Replace(url, GetRelativeUrl(filePath));    // Replace url by the local file
+                }
+                // In case this resource was already downloaded
+                else
+                {
+                    cssCode.Replace(url, GetRelativeUrl(this.resourcesNames[url]));   // Replace url by the local file
+                }
+            }
+
+            // Download all imported stylesheets
+            foreach (string url in importsUrlList)
+            {
+                string absoluteUrl = GetAbsoluteUrl(currentUrl, url);
+
+                // In case the stylesheet was not downloaded yet
+                if (!this.IsDownloaded(absoluteUrl))
+                {
+                    string innerCssCode = this.webClient.DownloadString(url);
+
+                    this.DownloadCssRecursively(innerCssCode, absoluteUrl);     // Recursively download the inner css file
+
+                    int previousId = cssId - 1;     // The id of the inner css resource
+                    cssCode.Replace(url, CssDirectoryName + "/" + previousId.ToString());   // Replace the url by the local location of the stylesheet
+                }
+                // In case the stylesheet was already downloaded
+                else
+                {
+                    cssCode.Replace(url, GetRelativeUrl(this.resourcesNames[absoluteUrl]));  // Replace the url by the local location of the stylesheet
+                }
+
+            }
+
+            // Save the css file
+            string finalCssFilePath = Path.Combine(this.CssPath, this.cssId.ToString());
+            this.RegisterDownload(currentUrl, finalCssFilePath, Resource.Css);
+            using (StreamWriter stream = new StreamWriter(finalCssFilePath))
+                stream.Write(cssCode);
         }
         #endregion
     }

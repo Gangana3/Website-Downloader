@@ -16,7 +16,7 @@ namespace website_downloader_tests
         // All the elements that does not contain content
         public static readonly string[] NoContentElements = { "area", "base", "basefont", "br", "col", "frame", "hr", "img", "input", "isindex", "meta", "param", "link" };
         // All elements that cannot contain inner elements 
-        public static readonly string[] NoInnerElements = { "style", "script", "noscript" };   
+        public static readonly string[] NoInnerElements = { "style", "script", "noscript" };
 
         public string HtmlCode { get; private set; }                                            // The Html Code                  
         private string CodeWithoutComments { get { return this.GetCodeWithoutComments(); } }    // The html Code without comments
@@ -87,7 +87,7 @@ namespace website_downloader_tests
         private string GetCodeWithoutComments()
         {
             string code = this.HtmlCode;
-            
+
             while (code.Contains("<!--"))
             {
                 int start = code.IndexOf("<!--");
@@ -134,7 +134,7 @@ namespace website_downloader_tests
         {
             int firstIndex = this.code.IndexOf('<');    // Start index of the declaration
             int lastIndex = this.code.IndexOf('>');     // End index of the declaration
-            
+
             string declaration = this.code.Slice(firstIndex + 1, lastIndex);    //for example '<link href="">' -->  'link href=""'
             return declaration.Split(' ')[0];
         }
@@ -196,9 +196,9 @@ namespace website_downloader_tests
 
                 key = key.ToLower();        // Make the key lower-case
                 attributes[key] = value;    // Add the attribute to the attributes dictionary 
-                rawAttributes = rawAttributes.Slice(nextQuotationMarkIndex + 1, rawAttributes.Length); 
+                rawAttributes = rawAttributes.Slice(nextQuotationMarkIndex + 1, rawAttributes.Length);
             }
-           
+
             return attributes;
         }
 
@@ -228,7 +228,7 @@ namespace website_downloader_tests
             int lastIndex = -1;                         // Last index checked
             string currentTagName;
 
-            while (code.IndexOf('<', currentIndex) != -1) 
+            while (code.IndexOf('<', currentIndex) != -1)
             {
                 int lessCharacterIndex = code.IndexOf("<", currentIndex);
                 // In case closing Tag
@@ -272,7 +272,7 @@ namespace website_downloader_tests
                 }
 
                 currentIndex = lastIndex;   // Continue checking from the next relevant index
-            } 
+            }
         }
         #endregion
 
@@ -285,14 +285,14 @@ namespace website_downloader_tests
             string declaration = string.Format("<{0}", this.TagName);
             foreach (KeyValuePair<string, string> pair in this.Attributes)
             {
-                declaration += string.Format(" {0}=\"{1}\"", pair.Key, pair.Value); 
+                declaration += string.Format(" {0}=\"{1}\"", pair.Key, pair.Value);
             }
             if (this.IsNonContentElement)
                 return declaration + "/>";
 
             declaration += ">";
             return string.Format("{0}{1}</{2}>", declaration, this.Content, this.TagName);
-            
+
         }
     }
 }

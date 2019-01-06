@@ -12,8 +12,9 @@ namespace website_downloader_tests
     {
         static void Main(string[] args)
         {
-            var downloader = new UrlDownloader("https://www.ynet.co.il/home/0,7340,L-8,00.html");
-            downloader.DownloadCss(@"C:\Users\ganga\Documents\try");
+            Directory.Delete(@"C:\Users\ganga\Desktop\Downloaded Website", true);
+            var downloader = new UrlDownloader("https://www.ynet.co.il/home/0,7340,L-8,00.html", @"C:\Users\ganga\Desktop");
+            downloader.Download();
         }
     }
 }
