@@ -28,11 +28,13 @@ namespace website_downloader_tests
         public string Url { get; private set; }         // Url to download
 
         // Private fields
-        private HtmlDocument htmlDoc;                           // Used for analyzing the html page
-        private WebClient webClient;                            // Used for downloading the html (by the given url)
-        private int resourceId = 0;                             // Used for naming the resources
-        private Dictionary<string, string> resourcesNames;      // Used for mapping between the downloaded url and local resource path
-
+        private HtmlDocument htmlDoc;                           // Parsed html page
+        private WebClient webClient;                            // Http client for downloading the pages
+        private int imgId = 0;                                  // Used for naming the images files
+        private int jsId = 0;                                   // Used for naming the javascript files
+        private int cssId = 0;                                  // Used for naming the css files
+        private enum Resource { Img, Css, Js };                 // Kinds of resources that can exist
+        private Dictionary<string, string> resourcesNames;      // mapping between the downloaded url and local resource path
 
         /// <summary>
         /// Instantiate a UrlDownloader object
@@ -45,7 +47,9 @@ namespace website_downloader_tests
                 html = this.webClient.DownloadString(url);
             this.Url = url;
             this.HtmlCode = html;
+
             this.htmlDoc = new HtmlDocument(html);
+            this.resourcesNames = new Dictionary<string, string>();
         }
 
         /// <summary>
@@ -64,15 +68,18 @@ namespace website_downloader_tests
         /// <param name="path">path to download the images to</param>
         public void DownloadImages(string path)
         {
-            int id = 0;
             foreach (HtmlElement imgTag in htmlDoc.GetElementsByTagName("img"))
             {
                 string href = imgTag.Attributes["src"];         // Get the href attribute from the element
                 string url = GetAbsoluteUrl(this.Url, href);    // Get the absolute url from the given url
 
-                string fileName = Path.Combine(path, id.ToString());
-                this.RegisterDownload(url, fileName);
-                this.webClient.DownloadFile(url, fileName);
+                if (!this.IsDownloaded(url))
+                {
+                    Console.WriteLine("DEBUG: Downloading {0}", url);
+                    string fileName = Path.Combine(path, imgId.ToString());
+                    this.RegisterDownload(url, fileName, Resource.Img);
+                    this.webClient.DownloadFile(url, fileName);
+                }
             }
         }
 
@@ -99,9 +106,12 @@ namespace website_downloader_tests
                     string src = element.Attributes["src"];
                     string url = GetAbsoluteUrl(this.Url, src);
 
-                    string fileName = Path.Combine(path, this.resourceId.ToString());
-                    this.webClient.DownloadFile(url, fileName);
-                    this.RegisterDownload(url, fileName);
+                    if (!this.IsDownloaded(url))
+                    {
+                        string fileName = Path.Combine(path, this.jsId.ToString());
+                        this.webClient.DownloadFile(url, fileName);
+                        this.RegisterDownload(url, fileName, Resource.Js);
+                    }
                 }
             }
                 
@@ -163,13 +173,38 @@ namespace website_downloader_tests
         /// </summary>
         /// <param name="absoluteUrl">Absolute url to the downloaded file</param>
         /// <param name="resourceId">Id of the given file</param>
-        private void RegisterDownload(string absoluteUrl, string filePath)
+        private void RegisterDownload(string absoluteUrl, string filePath, Resource resourceType)
         {
-            lock (lockObj)
+            switch (resourceType)
             {
-                this.resourcesNames.Add(absoluteUrl, filePath);     // Add the file to the list
-                this.resourceId++;                                  // Move on to the next file
+                case Resource.Css:
+                    cssId++;     
+                    break;
+
+                case Resource.Img:
+                    imgId++;     
+                    break;
+
+                case Resource.Js:
+                    jsId++;      
+                    break;
+
+                default:
+                    throw new NotImplementedException();
             }
+
+            this.resourcesNames.Add(absoluteUrl, filePath);
+        }
+
+
+        /// <summary>
+        /// Checks whether the url was downloaded.
+        /// </summary>
+        /// <param name="absoluteUrl"> Absolute url to a resource. </param>
+        /// <returns> whether the url was downloaded. </returns>
+        private bool IsDownloaded(string absoluteUrl)
+        {
+            return this.resourcesNames.Keys.Contains(absoluteUrl);
         }
         #endregion
     }

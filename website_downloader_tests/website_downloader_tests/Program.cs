@@ -12,7 +12,8 @@ namespace website_downloader_tests
     {
         static void Main(string[] args)
         {
-            Console.WriteLine(UrlDownloader.GetAbsoluteUrl("https://www.google.com/foo1/foo2/foo3", "../../stylesheet.css"));
+            var downloader = new UrlDownloader("https://en.wikipedia.org/wiki/Benjamin_Netanyahu");
+            downloader.DownloadImages(@"C:\Users\ganga\Documents\try");
         }
     }
 }
