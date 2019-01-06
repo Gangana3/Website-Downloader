@@ -48,6 +48,13 @@ namespace website_downloader_tests
                     yield return element;
         }
 
+        
+        public IEnumerable<HtmlElement> GetElementsBy(Predicate<HtmlElement> predicate)
+        {
+            foreach (HtmlElement element in this.GetAllElements())
+                if (predicate(element))
+                    yield return element;
+        }
 
         /// <summary>
         /// Returns all elements
