@@ -3,10 +3,28 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:gif="http://wpfanimatedgif.codeplex.com"
         xmlns:local="clr-namespace:website_downloader"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-        
+        Title="MainWindow" Height="450" Width="800" MinHeight="450" MinWidth="800" >
+    <Grid Background="#FF272727">
+        <Grid>
+            <StackPanel Orientation="Vertical" Background="Black" Margin="80, 50" VerticalAlignment="Center">
+                <Label Foreground="#efefef" HorizontalContentAlignment="Center" FontFamily="Calibri" FontSize="33">Url Downloader</Label>
+                <StackPanel Orientation="Horizontal" Margin="0, 30" HorizontalAlignment="Center">
+                    <Label HorizontalAlignment="Left" Foreground="White" Background="#191919">Website Address (url): &#160;</Label>
+                <TextBox x:Name="urlTextBox"  Width="300" HorizontalAlignment="Center"></TextBox>
+                </StackPanel>
+
+                <Image x:Name="downloadImage" 
+                       Height="100" 
+                       Source="/Images/download2.png" 
+                       MouseEnter="DownloadImageMouseEnter" 
+                       MouseLeave="DownloadImageMouseLeave"
+                       Cursor="Hand"/>
+                <Image gif:ImageBehavior.AnimatedSource="Images/loading.gif" Height="30" Margin="0, 25, 0, 0"/>
+                <Label HorizontalContentAlignment="Center" Foreground="#1dc439">Downlading...</Label>
+            </StackPanel>
+        </Grid>
     </Grid>
 </Window>
