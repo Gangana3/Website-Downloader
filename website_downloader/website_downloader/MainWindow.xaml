@@ -9,7 +9,7 @@
         Title="MainWindow" Height="450" Width="800" MinHeight="450" MinWidth="800" >
     <Grid Background="#FF272727">
         <Grid>
-            <StackPanel Orientation="Vertical" Background="Black" Margin="80, 50" VerticalAlignment="Center">
+            <StackPanel Orientation="Vertical" Margin="80, 50" VerticalAlignment="Center">
                 <Label Foreground="#efefef" HorizontalContentAlignment="Center" FontFamily="Calibri" FontSize="33">Url Downloader</Label>
                 <StackPanel Orientation="Horizontal" Margin="0, 30" HorizontalAlignment="Center">
                     <Label HorizontalAlignment="Left" Foreground="White" Background="#191919">Website Address (url): &#160;</Label>
