@@ -6,12 +6,7 @@ using System.Threading.Tasks;
 using System.Net;
 using System.IO;
 
-/// <summary>
-/// TODO: Make the class work for multithreaded download. for example the css, the js and the imgs may
-/// be downloaded each from a different thread. Maybe split the three of these into groups.
-/// 
-/// TODO: Check the DownloadImages and DownloadJS functions.
-/// </summary>
+
 namespace website_downloader_tests
 {
     /// <summary>
@@ -49,6 +44,7 @@ namespace website_downloader_tests
         private string CssPath { get { return Path.Combine(this.basePath, CssDirectoryName); } }
         private string JsPath { get { return Path.Combine(this.basePath, JsDirectoryName); } }
         private string ImgsPath { get { return Path.Combine(this.basePath, ImgsDirectoryName); } }
+        private string MainPagePath { get { return Path.Combine(this.basePath, MainPageName); } }
 
         /// <summary>
         /// Url Downloader constructor
@@ -85,8 +81,13 @@ namespace website_downloader_tests
         /// </summary>
         public void Download()
         {
-            this.DownloadCss(this.CssPath);
+            this.DownloadImages(this.ImgsPath);
+
+            this.InsertLinks();
+
+            this.SaveMainPage(this.MainPagePath);
         }
+
 
         /// <summary>
         /// Downloads the images from the html page to the given path
@@ -96,15 +97,18 @@ namespace website_downloader_tests
         {
             foreach (HtmlElement imgTag in htmlDoc.GetElementsByTagName("img"))
             {
-                string href = imgTag.Attributes["src"];         // Get the href attribute from the element
-                string absoluteUrl = GetAbsoluteUrl(this.Url, href);    // Get the absolute url from the given url
-
-                if (!this.IsDownloaded(absoluteUrl))
+                if (imgTag.Attributes.Keys.Contains("src"))
                 {
-                    Console.WriteLine("DEBUG: Downloading {0}", absoluteUrl);
-                    string filePath = Path.Combine(path, imgId.ToString());     // The local file path
-                    this.RegisterDownload(absoluteUrl, filePath, Resource.Img);
-                    this.webClient.DownloadFile(absoluteUrl, filePath);
+                    string url = imgTag.Attributes["src"];         // Get the href attribute from the element
+                    string absoluteUrl = GetAbsoluteUrl(this.Url, url);    // Get the absolute furl from the given url
+
+                    if (!this.IsDownloaded(absoluteUrl) && url.Length > 0)
+                    {
+                        Console.WriteLine("DEBUG: {0} Downloading {1}", this.imgId, absoluteUrl);
+                        string filePath = Path.Combine(path, imgId.ToString());     // The local file path
+                        this.RegisterDownload(url, filePath, Resource.Img);
+                        this.webClient.DownloadFile(absoluteUrl, filePath);
+                    }
                 }
             }
         }
@@ -158,6 +162,30 @@ namespace website_downloader_tests
 
 
         #region Private Methods
+
+
+        /// <summary>
+        /// Inserts the downloaded local files into the html code
+        /// so that the links in srcs will refer to the local files.
+        /// </summary>
+        private void InsertLinks()
+        {
+            foreach (KeyValuePair<string, string> pair in resourcesNames)
+            {
+                Console.WriteLine("DEBUG: Replacing {0} -> {1}", pair.Key, pair.Value);
+                this.HtmlCode = HtmlCode.Replace(pair.Key, GetRelativeUrl(pair.Value));
+            }
+        }
+
+        /// <summary>
+        /// Saves the main page in the given path
+        /// </summary>
+        /// <param name="path">Path the save the html file in</param>
+        private void SaveMainPage(string path)
+        {
+            using (StreamWriter sw = new StreamWriter(path))
+                sw.Write(this.HtmlCode);
+        }
 
         /// <summary>
         /// Returns a relative url of a downloaded file, the result url
@@ -274,7 +302,7 @@ namespace website_downloader_tests
         /// <returns> whether the url was downloaded. </returns>
         private bool IsDownloaded(string absoluteUrl)
         {
-            return this.resourcesNames.Keys.Contains(absoluteUrl);
+            return this.resourcesNames.Keys.Any(relativeUrl => GetAbsoluteUrl(this.Url,relativeUrl) == absoluteUrl);
         }
 
 

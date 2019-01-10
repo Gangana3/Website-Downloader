@@ -13,7 +13,7 @@ namespace website_downloader_tests
         static void Main(string[] args)
         {
             Directory.Delete(@"C:\Users\ganga\Desktop\Downloaded Website", true);
-            var downloader = new UrlDownloader("https://docs.djangoproject.com/en/2.1/", @"C:\Users\ganga\Desktop");
+            var downloader = new UrlDownloader("https://www.ynet.co.il/home/0,7340,L-8,00.html", @"C:\Users\ganga\Desktop");
             downloader.Download();
         }
     }
