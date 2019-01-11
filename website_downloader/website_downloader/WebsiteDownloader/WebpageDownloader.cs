@@ -62,6 +62,9 @@ namespace website_downloader.WebsiteDownloader
             this.htmlDoc = new HtmlDocument(html);                      // Parse the html code
             this.resourcesNames = new Dictionary<string, string>();
 
+            // Set the encoding
+            this.webClient.Encoding = htmlDoc.Encoding;
+
             // Fix the url if invalid
             if (!this.Url.EndsWith("/"))
                 this.Url += "/";

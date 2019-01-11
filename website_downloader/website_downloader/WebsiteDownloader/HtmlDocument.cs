@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Text;
 
 namespace website_downloader.WebsiteDownloader
 {
@@ -11,6 +12,8 @@ namespace website_downloader.WebsiteDownloader
     /// </summary>
     class HtmlDocument
     {
+        // The default html encoding
+        public const string defaultEncoding = "utf-8";
         // All the elements that does not contain content
         public static readonly string[] NoContentElements = { "area", "base", "basefont", "br", "col", "frame", "hr", "img", "input", "isindex", "meta", "param", "link" };
         // All elements that cannot contain inner elements 
@@ -18,10 +21,19 @@ namespace website_downloader.WebsiteDownloader
 
         public string HtmlCode { get; private set; }                                            // The Html Code                  
         private string CodeWithoutComments { get { return this.GetCodeWithoutComments(); } }    // The html Code without comments
+        public Encoding Encoding { get; private set; }                                          // The document encoding
 
         public HtmlDocument(string htmlCode)
         {
             this.HtmlCode = htmlCode;
+            // Set the encoding of the document
+            string encodingString;
+            List<HtmlElement> metaElements = this.GetElementsBy(e => e.TagName == "meta" && e.Attributes.Keys.Contains("charset")).ToList();
+            if (metaElements.Count != 1)            
+                encodingString = metaElements[0].Attributes["charset"];            
+            else            
+                encodingString = defaultEncoding;
+            this.Encoding = Encoding.GetEncoding("utf-8");
         }
 
         /// <summary>
