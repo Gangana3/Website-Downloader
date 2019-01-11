@@ -4,6 +4,7 @@ using System.Linq;
 using System.IO;
 using System.Net;
 using System.Text.RegularExpressions;
+using System.Web;
 
 namespace website_downloader.WebsiteDownloader
 {
@@ -14,12 +15,12 @@ namespace website_downloader.WebsiteDownloader
     /// </summary>
     class WebpageDownloader
     {
-        // Names
-        private static readonly string CssDirectoryName = "css";        // The name of the directory that contains the css
-        private static readonly string JsDirectoryName = "js";          // The name of the directory that contains the javascript files
-        private static readonly string ImgsDirectoryName = "images";    // The name of the directory that contains the images
-        private static readonly string CssResourcesDirectoryName = "css_resources";   // A directory that contains the files that the css file use
-        private static readonly string MainPageName = "index.html";     // The name of the local page
+        // Private & Static fields
+        private static readonly string CssDirectoryName = "css";                        // The name of the directory that contains the css
+        private static readonly string JsDirectoryName = "js";                          // The name of the directory that contains the javascript files
+        private static readonly string ImgsDirectoryName = "images";                    // The name of the directory that contains the images
+        private static readonly string CssResourcesDirectoryName = "css_resources";     // A directory that contains the files that the css file use
+        private static readonly string MainPageName = "index.html";                     // The name of the local page
 
         // Public Properties
         public string HtmlCode { get; private set; }    // Html code
@@ -61,17 +62,18 @@ namespace website_downloader.WebsiteDownloader
             this.htmlDoc = new HtmlDocument(html);                      // Parse the html code
             this.resourcesNames = new Dictionary<string, string>();
 
+            // Fix the url if invalid
+            if (!this.Url.EndsWith("/"))
+                this.Url += "/";
+
             // Create a new main directory
             this.basePath = Path.Combine(path, websiteName);
             
             if (Directory.Exists(this.basePath))
             {
-                System.Windows.Forms.MessageBox.Show("DEBUG: directory exists");
-                this.basePath += Directory.EnumerateDirectories(path).Count(dir => Path.GetFileName(dir).StartsWith(websiteName)).ToString();  // Add an id to the directory
-                
-                //DEBUG
-                foreach (string dir in Directory.EnumerateDirectories(path))
-                    System.Windows.Forms.MessageBox.Show(string.Format("DEBUG: {0}", dir));
+                // Add an id to the directory
+                this.basePath += Directory.EnumerateDirectories(path).Count(
+                    dir => Path.GetFileName(dir).StartsWith(websiteName)).ToString();  
             }
             Directory.CreateDirectory(basePath);
 
@@ -83,8 +85,6 @@ namespace website_downloader.WebsiteDownloader
 
         }
 
-
-
         /// <summary>
         /// Downloads the html file with all of the resources.
         /// Images, Javascripts etc...
@@ -94,22 +94,21 @@ namespace website_downloader.WebsiteDownloader
             this.OnStartedDownloading();            // downloading is starting
 
             // Download all the resources
-            this.DownloadImages(this.ImgsPath);
-            this.DownloadCss(this.CssPath);
-            this.DownloadJs(this.JsPath);
+            this.DownloadImages();
+            this.DownloadCss();
+            this.DownloadJs();
             this.InsertLinks();                     // Insert the link into the html code
             this.RemoveSrcsetAttribute();           // Remove srcset attribute that make images disappear
-            this.SaveMainPage(this.MainPagePath);   // Save the html code into a file
+            this.SaveMainPage();                    // Save the html code into a file
 
             this.OnFinishedDownloading();           // downloading is finished
         }
-
 
         /// <summary>
         /// Downloads the images from the html page to the given path
         /// </summary>
         /// <param name="path">path to download the images to</param>
-        public void DownloadImages(string path)
+        public void DownloadImages()
         {
             foreach (HtmlElement imgTag in htmlDoc.GetElementsByTagName("img"))
             {
@@ -122,7 +121,7 @@ namespace website_downloader.WebsiteDownloader
                     {
                         WriteLineToLogFile("DEBUG: {0} Downloading {1}", this.imgId, absoluteUrl);
 
-                        string filePath = Path.Combine(path, imgId.ToString());     // The local file path             
+                        string filePath = Path.Combine(this.ImgsPath, imgId.ToString());     // The local file path             
                         try
                         {
                             this.webClient.DownloadFile(absoluteUrl, filePath);
@@ -141,8 +140,9 @@ namespace website_downloader.WebsiteDownloader
         /// Downloads the Stylesheets from the given url, Including the resources that
         /// The stylesheet uses like another stylesheets, images etc...
         /// </summary>
-        public void DownloadCss(string path)
+        public void DownloadCss()
         {
+            // Download the css files and their resources
             bool FilterLinks(HtmlElement e) => e.Attributes.Keys.Contains("rel") && e.Attributes["rel"].ToLower() == "stylesheet" && e.Attributes.Keys.Contains("href");
             foreach (HtmlElement element in htmlDoc.GetElementsBy(FilterLinks))
             {
@@ -150,18 +150,49 @@ namespace website_downloader.WebsiteDownloader
 
                 if (!this.IsDownloaded(absoluteUrl))
                 {
-                    WriteLineToLogFile("DEBUG: Downloading Css {0}", absoluteUrl);
-
                     this.DownloadCssRecursively(this.webClient.DownloadString(absoluteUrl), absoluteUrl);
+                    WriteLineToLogFile("DEBUG: Downloaded {0}", absoluteUrl);
+                }
+            }
+
+            // Download the css resources that appear inside the html
+            foreach (HtmlElement element in htmlDoc.GetElementsByTagName("style"))
+            {
+                var urlRegex = new Regex(@"url\([""']?([-a-zA-Z0-9@:%_\+.~#?&//=]*)[""']?\)");  // The url is in group[1]
+                foreach (Match match in urlRegex.Matches(element.Content))
+                {
+                    string url = match.Groups[1].Value;
+                    string absoluteUrl = GetAbsoluteUrl(this.Url, url);
+                    // In case this url was not downloaded yet
+                    if (!this.IsDownloaded(absoluteUrl))
+                    {                        
+                        try
+                        {
+                            string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString());
+                            this.webClient.DownloadFile(absoluteUrl, filePath);
+                            // In case the downloaded resource is an svg file
+                            if (webClient.ResponseHeaders[HttpResponseHeader.ContentType] == "image/svg+xml")
+                            {
+                                // Rename the file
+                                File.Move(filePath, filePath + ".svg");
+                                filePath += ".svg";
+                            }
+                            this.RegisterDownload(url, filePath, Resource.CssResource);
+                            this.WriteLineToLogFile("DEBUG: Downloaded {0}", absoluteUrl);
+                        }
+                        catch (WebException ex)
+                        {
+                            this.WriteLineToLogFile("DEBUG: ERROR: Failed downloading {0}   ==> MESSAGE: {1}", absoluteUrl, ex.Message);
+                        }
+                    }
                 }
             }
         }
 
-
         /// <summary>
         /// Downloads the javascript from the html page
         /// </summary>
-        public void DownloadJs(string path)
+        public void DownloadJs()
         {
             foreach (HtmlElement element in htmlDoc.GetElementsByTagName("script"))
             {
@@ -172,14 +203,13 @@ namespace website_downloader.WebsiteDownloader
                     string absoluteUrl = GetAbsoluteUrl(this.Url, src);
 
                     if (!this.IsDownloaded(absoluteUrl))
-                    {
-                        WriteLineToLogFile("DEBUG: Downloading {0}", absoluteUrl);
-
-                        string filePath = Path.Combine(path, this.jsId.ToString());     // The local file path
+                    {                   
+                        string filePath = Path.Combine(this.JsPath, this.jsId.ToString());     // The local file path
                         try
                         {
                             this.webClient.DownloadFile(absoluteUrl, filePath);
                             this.RegisterDownload(absoluteUrl, filePath, Resource.Img);
+                            WriteLineToLogFile("DEBUG: Downloaded {0}", absoluteUrl);
                         }
                         catch (WebException ex)
                         {
@@ -190,7 +220,6 @@ namespace website_downloader.WebsiteDownloader
             }
 
         }
-
 
         #region Private Methods
         /// <summary>
@@ -222,9 +251,9 @@ namespace website_downloader.WebsiteDownloader
         /// Saves the main page in the given path
         /// </summary>
         /// <param name="path">Path the save the html file in</param>
-        private void SaveMainPage(string path)
+        private void SaveMainPage()
         {
-            using (StreamWriter sw = new StreamWriter(path))
+            using (StreamWriter sw = new StreamWriter(this.MainPagePath))
                 sw.Write(this.HtmlCode);
         }
 
@@ -306,9 +335,9 @@ namespace website_downloader.WebsiteDownloader
         /// Used to mark a url as downloaded, In order to be able to retreive it's file name
         /// and insert it to the page.
         /// </summary>
-        /// <param name="absoluteUrl">Absolute url to the downloaded file</param>
+        /// <param name="url">Absolute url to the downloaded file</param>
         /// <param name="resourceId">Id of the given file</param>
-        private void RegisterDownload(string absoluteUrl, string filePath, Resource resourceType)
+        private void RegisterDownload(string url, string filePath, Resource resourceType)
         {
             switch (resourceType)
             {
@@ -332,7 +361,7 @@ namespace website_downloader.WebsiteDownloader
                     throw new NotImplementedException();
             }
 
-            this.resourcesNames.Add(absoluteUrl, filePath);
+            this.resourcesNames.Add(url, filePath);
         }
 
 
@@ -392,13 +421,12 @@ namespace website_downloader.WebsiteDownloader
                 // In case the resource was not downloaded yet
                 if (!this.IsDownloaded(absoluteUrl))
                 {
-                    WriteLineToLogFile("DEBUG: Downloading Css Resource {0}", absoluteUrl);
                     string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString());
                     this.RegisterDownload(absoluteUrl, filePath, Resource.CssResource);
                     try
                     {
                         this.webClient.DownloadFile(absoluteUrl, filePath);
-
+                        WriteLineToLogFile("DEBUG: Downloaded {0}", absoluteUrl);
                         cssCode.Replace(url, GetRelativeUrl(filePath));    // Replace url by the local file
                     }
                     catch (System.Net.WebException ex)
@@ -425,8 +453,8 @@ namespace website_downloader.WebsiteDownloader
                     {
                         string innerCssCode = this.webClient.DownloadString(url);
 
-                        WriteLineToLogFile("DEBUG: Downloading inner stylesheet {0}", absoluteUrl);
                         this.DownloadCssRecursively(innerCssCode, absoluteUrl);     // Recursively download the inner css file
+                        WriteLineToLogFile("DEBUG: Downloaded inner stylesheet {0}", absoluteUrl);
 
                         int previousId = cssId - 1;     // The id of the inner css resource
                         cssCode.Replace(url, CssDirectoryName + "/" + previousId.ToString());   // Replace the url by the local location of the stylesheet
