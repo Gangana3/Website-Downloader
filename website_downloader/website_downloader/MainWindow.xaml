@@ -6,6 +6,7 @@
         xmlns:gif="http://wpfanimatedgif.codeplex.com"
         xmlns:local="clr-namespace:website_downloader"
         mc:Ignorable="d"
+        x:Name="mainWindow"
         Title="MainWindow" Height="450" Width="800" MinHeight="450" MinWidth="800" >
     
     <!-- Page Resources -->
@@ -13,43 +14,65 @@
         <Style x:Key="InputLabelStyle" TargetType="Label">
             <Setter Property="Width" Value="132" />
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="Background" Value="#191919"/>
-            <Setter Property="HorizontalAlignment" Value="Left"/>
-            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#191919" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="Foreground" Value="White" />
         </Style>
 
         <Style x:Key="TextBoxStyle" TargetType="TextBox">
             <Setter Property="Width" Value="300" />
-            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center" />
             <Setter Property="FontSize" Value="16" />
-            <Setter Property="SelectionBrush" Value="#1dc439"/>
-            <Setter Property="Background" Value="White"/>
+            <Setter Property="SelectionBrush" Value="#1dc439" />
+            <Setter Property="Background" Value="White" />
         </Style>
+
+        <Style x:Key="BrowseLabelStyle" TargetType="Label">
+            <Setter Property="Background" Value="#177500" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#0c3d00" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DownloadImageStyle" TargetType="Image">
+            <Setter Property="Height" Value="100" />
+            <Setter Property="Source" Value="Images/download2.png"  />
+            <Setter Property="Cursor" Value="Hand" />
+
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Source" Value="Images/download1.png"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
     </Window.Resources>
     <!-- End of page resources-->
     <Grid Background="#FF272727">
         <Grid>
             <StackPanel Orientation="Vertical" Margin="80, 50" VerticalAlignment="Center">
-                <Label Foreground="#efefef" HorizontalContentAlignment="Center" FontFamily="Calibri" FontSize="33">Url Downloader</Label>
+                <Label Foreground="#efefef" HorizontalContentAlignment="Center" FontFamily="Calibri" FontSize="33">Websites Downloader</Label>
                 
                 <StackPanel Orientation="Horizontal" Margin="0,20, 0, 0" HorizontalAlignment="Center">
                     <Label x:Name="pathLabel" Style="{StaticResource InputLabelStyle}">Path: &#160;</Label>
-                    <TextBox x:Name="urlTextBox"  Style="{StaticResource TextBoxStyle}"/>
+                    <TextBox x:Name="pathTextBox"  Style="{StaticResource TextBoxStyle}" Width="220" IsReadOnly="True"/>
+                    <Label x:Name="browseLabel" Width="80"  MouseLeftButtonDown="BrowseLabelClick" Style="{StaticResource BrowseLabelStyle}">Browse</Label>
                 </StackPanel>
 
                 <StackPanel Orientation="Horizontal" Margin="0, 5, 0, 20" HorizontalAlignment="Center" >
                     <Label Style="{StaticResource InputLabelStyle}">Website Address (url): &#160;</Label>
-                    <TextBox x:Name="pathTextBox"  Style="{StaticResource TextBoxStyle}"/>
+                    <TextBox x:Name="urlTextBox"  Style="{StaticResource TextBoxStyle}"/>
                 </StackPanel>
 
-                <Image x:Name="downloadImage" 
-                       Height="100" 
-                       Source="/Images/download2.png" 
-                       MouseEnter="DownloadImageMouseEnter" 
-                       MouseLeave="DownloadImageMouseLeave"
-                       Cursor="Hand"/>
-                <Image gif:ImageBehavior.AnimatedSource="Images/loading.gif" Height="30" Margin="0, 10, 0, 0"/>
-                <Label HorizontalContentAlignment="Center" Foreground="#1dc439">Downlading...</Label>
+                <Image x:Name="downloadImage" Style="{StaticResource DownloadImageStyle}" MouseLeftButtonDown="DownloadImageClick" />
+                <Image gif:ImageBehavior.AnimatedSource="Images/loading.gif" x:Name="loadingGif" Height="30" Margin="0, 10, 0, 0" Visibility="Hidden" />
+                <Label x:Name="promptLabel" HorizontalContentAlignment="Center" Visibility="Hidden">Downloading...</Label>
             </StackPanel>
         </Grid>
     </Grid>

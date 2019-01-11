@@ -12,7 +12,9 @@ namespace website_downloader_tests
     {
         static void Main(string[] args)
         {
-            Directory.Delete(@"C:\Users\ganga\Desktop\Downloaded Website", true);
+            if (Directory.Exists(@"C:\Users\ganga\Desktop\Downloaded Website"))
+                Directory.Delete(@"C:\Users\ganga\Desktop\Downloaded Website", true);
+
             var downloader = new WebpageDownloader("https://www.ynet.co.il/home/0,7340,L-8,00.html", @"C:\Users\ganga\Desktop");
             downloader.Download();
         }
