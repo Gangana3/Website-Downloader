@@ -173,7 +173,7 @@ namespace website_downloader.WebsiteDownloader
                     {
                         try
                         {
-                            string extension = this.GetLastDownloadedFileExtension();
+                            string extension = this.GetCssResourceExtension(url);
                             string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString() + extension);
                             this.webClient.DownloadFile(absoluteUrl, filePath);
                             this.RegisterDownload(url, filePath, Resource.CssResource);
@@ -365,6 +365,22 @@ namespace website_downloader.WebsiteDownloader
         }
 
         /// <summary>
+        /// Sometimes the given mime type is invalid, instead of .svg we get .png, 
+        /// this method checks the url for an extension.
+        /// </summary>
+        /// <param name="url">Css resource url</param>
+        /// <returns>The extension of the resource</returns>
+        private string GetCssResourceExtension(string url)
+        {
+            if (url.EndsWith(".png"))
+                return ".png";
+            else if (url.EndsWith(".svg"))
+                return ".svg";
+            else
+                return this.GetLastDownloadedFileExtension();
+        }
+
+        /// <summary>
         /// Used to mark a url as downloaded, In order to be able to retreive it's file name
         /// and insert it to the page.
         /// </summary>
@@ -462,7 +478,7 @@ namespace website_downloader.WebsiteDownloader
                 // In case the resource was not downloaded yet
                 if (!this.IsDownloaded(absoluteUrl))
                 {
-                    string _extension = this.GetLastDownloadedFileExtension();
+                    string _extension = GetCssResourceExtension(url);
                     string filePath = Path.Combine(this.CssResourcesPath, this.cssResourceId.ToString() + _extension);
                     this.RegisterDownload(absoluteUrl, filePath, Resource.CssResource);
                     try
@@ -537,7 +553,7 @@ namespace website_downloader.WebsiteDownloader
 
         #region Debug utilities
         private string logFilePath;
-        private StreamWriter logStream;
+
         /// <summary>
         /// Constructor for debugging using log file
         /// </summary>
@@ -549,12 +565,10 @@ namespace website_downloader.WebsiteDownloader
         {
             this.logFilePath = logFilePath;
             if (!File.Exists(logFilePath))
-                this.logStream = new StreamWriter(File.Create(logFilePath));
-            else
-            {
-                this.logStream = new StreamWriter(logFilePath);
-            }
-            this.FinishedDownloading += (object sender, EventArgs e) => logStream.Close();  // Release the file
+                File.Create(logFilePath).Close();                                   // Create a log file
+            else            
+                File.Open(logFilePath, FileMode.Open, FileAccess.Write).Close();    // Clear the existing file
+            
         }
 
         /// <summary>
@@ -564,7 +578,10 @@ namespace website_downloader.WebsiteDownloader
         private void WriteLineToLogFile(string input, params object[] args)
         {
             if (!string.IsNullOrEmpty(this.logFilePath))
-                logStream.WriteLine(string.Format(input, args));
+                using (StreamWriter stream = new StreamWriter(this.logFilePath, true))
+                {
+                    stream.WriteLine(input, args);
+                }
         }
         #endregion
     }
