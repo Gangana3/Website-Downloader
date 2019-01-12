@@ -146,15 +146,16 @@ namespace website_downloader.WebsiteDownloader
         public void DownloadCss()
         {
             // Download the css files and their resources
-            bool FilterLinks(HtmlElement e) => e.Attributes.Keys.Contains("rel") && e.Attributes["rel"].ToLower() == "stylesheet" && e.Attributes.Keys.Contains("href");
+            bool FilterLinks(HtmlElement e) => e.TagName.ToLower() == "link" && e.Attributes.Keys.Contains("rel") && e.Attributes.Keys.Contains("href") && e.Attributes["rel"].ToLower() == "stylesheet";
             foreach (HtmlElement element in htmlDoc.GetElementsBy(FilterLinks))
             {
-                string absoluteUrl = GetAbsoluteUrl(this.Url, element.Attributes["href"]);
+                string url = element.Attributes["href"];
+                string absoluteUrl = GetAbsoluteUrl(this.Url, url);
 
                 if (!this.IsDownloaded(absoluteUrl))
                 {
-                    this.DownloadCssRecursively(this.webClient.DownloadString(absoluteUrl), absoluteUrl);
-                    WriteLineToLogFile("DEBUG: Downloaded {0}", absoluteUrl);
+                    this.DownloadCssRecursively(this.webClient.DownloadString(absoluteUrl), url);
+                    this.WriteLineToLogFile("DEBUG: Downloaded {0}", absoluteUrl);
                 }
             }
 
@@ -168,7 +169,7 @@ namespace website_downloader.WebsiteDownloader
                     string absoluteUrl = GetAbsoluteUrl(this.Url, url);
                     // In case this url was not downloaded yet
                     if (!this.IsDownloaded(absoluteUrl))
-                    {                        
+                    {
                         try
                         {
                             string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString());
@@ -285,13 +286,23 @@ namespace website_downloader.WebsiteDownloader
         }
 
         /// <summary>
+        /// Determines whether the given url is relative or not
+        /// </summary>
+        /// <param name="url">URL to check</param>
+        /// <returns>Whether the given URL is relative</returns>
+        private static bool IsRelativeUrl(string url)
+        {
+            return url.StartsWith("http");
+        }
+
+        /// <summary>
         /// Returns the absolute Url of the relative url.
         /// for example:
         ///     current = "https://www.google.com", relativeUrl = "/helloworld"     -> "https://www.google.com/helloworld"
         /// </summary>
         /// <param name="baseUrl"></param>
         /// <param name="relativeUrl"></param>
-        public static string GetAbsoluteUrl(string currentUrl, string relativeUrl)
+        private static string GetAbsoluteUrl(string currentUrl, string relativeUrl)
         {
             // Get base url, for example 'https://www.google.com/foo/foo1/foo2' -> base url = 'https://www.google.com'
             string baseUrl = Regex.Match(currentUrl, @"https?://[a-zA-Z\.0-9]*").Groups[0].Value;
@@ -382,11 +393,19 @@ namespace website_downloader.WebsiteDownloader
         /// <summary>
         /// Downloads the css resources. for example a css file may contain 'url("url/to/resource)"', in that case,
         /// we have to download this resource
+        /// 
+        /// TODO: CHECKK!!
         /// </summary>
         /// <param name="cssCode"></param>
         /// <returns></returns>
-        private void DownloadCssRecursively(string cssCode, string currentUrl)
+        private void DownloadCssRecursively(string cssCode, string stylesheetUrl, string currentUrl = "")
         {
+            // Get the absolute url of the current position
+            if (currentUrl == string.Empty) currentUrl = this.Url;
+            string absoluteCurrentUrl = stylesheetUrl;  // The absolute url of the location the code is currently in
+            if (IsRelativeUrl(absoluteCurrentUrl))
+                absoluteCurrentUrl = GetAbsoluteUrl(currentUrl, absoluteCurrentUrl);
+
             // Regexes for finding the resources used inside the css code
             var urlRegex = new Regex(@"url\([""']?([-a-zA-Z0-9@:%_\+.~#?&//=]*)[""']?\)");  // The url is in group[1]
             var importRegex = new Regex(@"@import (?:url\()?[""']?([-a-zA-Z0-9@:%_\+.~#?&//=]*)[""']?\)?"); // The url is in group[1]
@@ -420,7 +439,7 @@ namespace website_downloader.WebsiteDownloader
             // Download all resources used in this stylesheet
             foreach (string url in resourcesUrlList)
             {
-                string absoluteUrl = GetAbsoluteUrl(currentUrl, url);
+                string absoluteUrl = GetAbsoluteUrl(absoluteCurrentUrl, url);
                 // In case the resource was not downloaded yet
                 if (!this.IsDownloaded(absoluteUrl))
                 {
@@ -447,7 +466,7 @@ namespace website_downloader.WebsiteDownloader
             // Download all imported stylesheets
             foreach (string url in importsUrlList)
             {
-                string absoluteUrl = GetAbsoluteUrl(currentUrl, url);
+                string absoluteUrl = GetAbsoluteUrl(absoluteCurrentUrl, url);
 
                 // In case the stylesheet was not downloaded yet
                 if (!this.IsDownloaded(absoluteUrl))
@@ -456,7 +475,7 @@ namespace website_downloader.WebsiteDownloader
                     {
                         string innerCssCode = this.webClient.DownloadString(url);
 
-                        this.DownloadCssRecursively(innerCssCode, absoluteUrl);     // Recursively download the inner css file
+                        this.DownloadCssRecursively(innerCssCode, url);     // Recursively download the inner css file
                         WriteLineToLogFile("DEBUG: Downloaded inner stylesheet {0}", absoluteUrl);
 
                         int previousId = cssId - 1;     // The id of the inner css resource
@@ -476,10 +495,10 @@ namespace website_downloader.WebsiteDownloader
             }
 
             // Save the css file
-            string finalCssFilePath = Path.Combine(this.CssPath, this.cssId.ToString());
-            this.RegisterDownload(currentUrl, finalCssFilePath, Resource.Css);
+            string finalCssFilePath = Path.Combine(this.CssPath, this.cssId.ToString());            
             using (StreamWriter stream = new StreamWriter(finalCssFilePath))
                 stream.Write(cssCode);
+            this.RegisterDownload(stylesheetUrl, finalCssFilePath, Resource.Css);
         }
         #endregion
 
