@@ -176,13 +176,6 @@ namespace website_downloader.WebsiteDownloader
                             string extension = this.GetLastDownloadedFileExtension();
                             string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString() + extension);
                             this.webClient.DownloadFile(absoluteUrl, filePath);
-                            // In case the downloaded resource is an svg file
-                            if (webClient.ResponseHeaders[HttpResponseHeader.ContentType] == "image/svg+xml")
-                            {
-                                // Rename the file
-                                File.Move(filePath, filePath + ".svg");
-                                filePath += ".svg";
-                            }
                             this.RegisterDownload(url, filePath, Resource.CssResource);
                             this.WriteLineToLogFile("DEBUG: Downloaded {0}", absoluteUrl);
                         }

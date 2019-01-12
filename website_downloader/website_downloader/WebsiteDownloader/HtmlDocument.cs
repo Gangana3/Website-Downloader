@@ -199,7 +199,12 @@ namespace website_downloader.WebsiteDownloader
 
                 // Get the key and the value of the attribute
                 int equalsIndex = rawAttributes.IndexOf('=');
-                string key = rawAttributes.Slice(0, equalsIndex);   // key of the attribute for example src or href
+                int spaceIndex = rawAttributes.IndexOf(' ');
+                string key;
+                if (spaceIndex != -1 && spaceIndex < equalsIndex)
+                    key = rawAttributes.Slice(spaceIndex + 1, equalsIndex);
+                else
+                    key = rawAttributes.Slice(0, equalsIndex);   // key of the attribute for example src or href
                 int quotationMarkIndex = rawAttributes.IndexOf(quotationMark);
                 int nextQuotationMarkIndex = rawAttributes.IndexOf(quotationMark, quotationMarkIndex + 1);
                 string value = rawAttributes.Slice(quotationMarkIndex + 1, nextQuotationMarkIndex);  // the value of the attribute for example 'src="auto:blank"' -> auto:blank
