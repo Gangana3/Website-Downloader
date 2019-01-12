@@ -459,7 +459,6 @@ namespace website_downloader.WebsiteDownloader
             foreach (string url in resourcesUrlList)
             {   
                 string absoluteUrl = GetAbsoluteUrl(absoluteCurrentUrl, url);
-                this.WriteLineToLogFile("DEBUG: ABSOLUTE URL ===> {0}", absoluteCurrentUrl);
                 // In case the resource was not downloaded yet
                 if (!this.IsDownloaded(absoluteUrl))
                 {
@@ -470,7 +469,7 @@ namespace website_downloader.WebsiteDownloader
                     {
                         this.webClient.DownloadFile(absoluteUrl, filePath);
                         WriteLineToLogFile("DEBUG: Downloaded {0}", absoluteUrl);
-                        cssCode.Replace(url, GetRelativeUrl(filePath));    // Replace url by the local file
+                        cssCode = cssCode.Replace(url, "../" + GetRelativeUrl(filePath));    // Replace url by the local file (Relative to the css file)
                     }
                     catch (System.Net.WebException ex)
                     {
@@ -480,7 +479,7 @@ namespace website_downloader.WebsiteDownloader
                 // In case this resource was already downloaded
                 else
                 {
-                    cssCode.Replace(url, GetRelativeUrl(this.resourcesNames[url]));   // Replace url by the local file
+                    cssCode = cssCode.Replace(url, GetRelativeUrl("../" + this.resourcesNames[url]));   // Replace url by the local file ( Relative to the css file)
                 }
             }
 
