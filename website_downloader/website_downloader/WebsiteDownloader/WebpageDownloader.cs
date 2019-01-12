@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Web;
+using System.Text;
 
 namespace website_downloader.WebsiteDownloader
 {
@@ -21,6 +22,7 @@ namespace website_downloader.WebsiteDownloader
         private static readonly string ImgsDirectoryName = "images";                    // The name of the directory that contains the images
         private static readonly string CssResourcesDirectoryName = "css_resources";     // A directory that contains the files that the css file use
         private static readonly string MainPageName = "index.html";                     // The name of the local page
+        private static readonly Encoding DefaultEncoding = Encoding.UTF8;               // The default encoding for the downloaded html
 
         // Public Properties
         public string HtmlCode { get; private set; }    // Html code
@@ -55,15 +57,13 @@ namespace website_downloader.WebsiteDownloader
         /// <param name="path">Destination path</param>
         public WebpageDownloader(string url, string path, string websiteName = "Downloaded Website")
         {
-            this.webClient = new WebClient();
+            this.webClient = new WebClient();            
+            this.webClient.Encoding = DefaultEncoding;                  // Set the encoding
             string html = this.webClient.DownloadString(url);
             this.Url = url;
             this.HtmlCode = html;
             this.htmlDoc = new HtmlDocument(html);                      // Parse the html code
             this.resourcesNames = new Dictionary<string, string>();
-
-            // Set the encoding
-            this.webClient.Encoding = htmlDoc.Encoding;
 
             // Fix the url if invalid
             if (!this.Url.EndsWith("/"))
