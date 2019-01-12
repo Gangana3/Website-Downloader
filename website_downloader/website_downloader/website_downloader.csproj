@@ -61,6 +61,7 @@
     </ApplicationDefinition>
     <Compile Include="WebsiteDownloader\Extensions.cs" />
     <Compile Include="WebsiteDownloader\HtmlDocument.cs" />
+    <Compile Include="WebsiteDownloader\MimeTypeUtility.cs" />
     <Compile Include="WebsiteDownloader\WebpageDownloader.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>

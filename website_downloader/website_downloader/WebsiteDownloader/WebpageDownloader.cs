@@ -124,7 +124,8 @@ namespace website_downloader.WebsiteDownloader
                     {
                         WriteLineToLogFile("DEBUG: {0} Downloading {1}", this.imgId, absoluteUrl);
 
-                        string filePath = Path.Combine(this.ImgsPath, imgId.ToString());     // The local file path             
+                        string extension = this.GetLastDownloadedFileExtension();
+                        string filePath = Path.Combine(this.ImgsPath, imgId.ToString() + extension);     // The local file path             
                         try
                         {
                             this.webClient.DownloadFile(absoluteUrl, filePath);
@@ -172,7 +173,8 @@ namespace website_downloader.WebsiteDownloader
                     {
                         try
                         {
-                            string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString());
+                            string extension = this.GetLastDownloadedFileExtension();
+                            string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString() + extension);
                             this.webClient.DownloadFile(absoluteUrl, filePath);
                             // In case the downloaded resource is an svg file
                             if (webClient.ResponseHeaders[HttpResponseHeader.ContentType] == "image/svg+xml")
@@ -207,8 +209,9 @@ namespace website_downloader.WebsiteDownloader
                     string absoluteUrl = GetAbsoluteUrl(this.Url, src);
 
                     if (!this.IsDownloaded(absoluteUrl))
-                    {                   
-                        string filePath = Path.Combine(this.JsPath, this.jsId.ToString());     // The local file path
+                    {
+                        string extension = this.GetLastDownloadedFileExtension();
+                        string filePath = Path.Combine(this.JsPath, this.jsId.ToString() + extension);     // The local file path
                         try
                         {
                             this.webClient.DownloadFile(absoluteUrl, filePath);
@@ -226,6 +229,19 @@ namespace website_downloader.WebsiteDownloader
         }
 
         #region Private Methods
+        /// <summary>
+        /// Returns the mime type of the last response.
+        /// for example -> if an image was downloaded, it may return .png, .jpg etc...
+        /// </summary>
+        /// <returns></returns>
+        private string GetLastDownloadedFileExtension()
+        {
+            string mimeType = this.webClient.ResponseHeaders[HttpResponseHeader.ContentType];
+            if (mimeType.Contains(";"))
+                mimeType = mimeType.Remove(mimeType.IndexOf(';'));
+            return MimeTypeUtility.GetExtension(mimeType);
+        }
+
         /// <summary>
         /// Removes srcset from the html code because it's making the images
         /// disappear
@@ -292,7 +308,7 @@ namespace website_downloader.WebsiteDownloader
         /// <returns>Whether the given URL is relative</returns>
         private static bool IsRelativeUrl(string url)
         {
-            return url.StartsWith("http");
+            return !url.StartsWith("http");
         }
 
         /// <summary>
@@ -304,6 +320,9 @@ namespace website_downloader.WebsiteDownloader
         /// <param name="relativeUrl"></param>
         private static string GetAbsoluteUrl(string currentUrl, string relativeUrl)
         {
+            ////Unescape the urls (remove html escapings)
+            relativeUrl = HttpUtility.HtmlDecode(relativeUrl);
+
             // Get base url, for example 'https://www.google.com/foo/foo1/foo2' -> base url = 'https://www.google.com'
             string baseUrl = Regex.Match(currentUrl, @"https?://[a-zA-Z\.0-9]*").Groups[0].Value;
             bool isSecured = baseUrl.StartsWith("https");
@@ -438,12 +457,14 @@ namespace website_downloader.WebsiteDownloader
 
             // Download all resources used in this stylesheet
             foreach (string url in resourcesUrlList)
-            {
+            {   
                 string absoluteUrl = GetAbsoluteUrl(absoluteCurrentUrl, url);
+                this.WriteLineToLogFile("DEBUG: ABSOLUTE URL ===> {0}", absoluteCurrentUrl);
                 // In case the resource was not downloaded yet
                 if (!this.IsDownloaded(absoluteUrl))
                 {
-                    string filePath = Path.Combine(this.CssResourcesPath, cssResourceId.ToString());
+                    string _extension = this.GetLastDownloadedFileExtension();
+                    string filePath = Path.Combine(this.CssResourcesPath, this.cssResourceId.ToString() + _extension);
                     this.RegisterDownload(absoluteUrl, filePath, Resource.CssResource);
                     try
                     {
@@ -495,7 +516,8 @@ namespace website_downloader.WebsiteDownloader
             }
 
             // Save the css file
-            string finalCssFilePath = Path.Combine(this.CssPath, this.cssId.ToString());            
+            string extension = ".css";
+            string finalCssFilePath = Path.Combine(this.CssPath, this.cssId.ToString() + extension);            
             using (StreamWriter stream = new StreamWriter(finalCssFilePath))
                 stream.Write(cssCode);
             this.RegisterDownload(stylesheetUrl, finalCssFilePath, Resource.Css);
