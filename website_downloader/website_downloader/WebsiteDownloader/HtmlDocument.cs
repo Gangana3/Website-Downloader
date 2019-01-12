@@ -29,7 +29,7 @@ namespace website_downloader.WebsiteDownloader
             // Set the encoding of the document
             string encodingString;
             List<HtmlElement> metaElements = this.GetElementsBy(e => e.TagName == "meta" && e.Attributes.Keys.Contains("charset")).ToList();
-            if (metaElements.Count != 1)            
+            if (metaElements.Count != 0)            
                 encodingString = metaElements[0].Attributes["charset"];            
             else            
                 encodingString = defaultEncoding;
