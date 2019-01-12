@@ -235,11 +235,18 @@ namespace website_downloader.WebsiteDownloader
         /// </summary>
         /// <returns></returns>
         private string GetLastDownloadedFileExtension()
-        {
-            string mimeType = this.webClient.ResponseHeaders[HttpResponseHeader.ContentType];
-            if (mimeType.Contains(";"))
-                mimeType = mimeType.Remove(mimeType.IndexOf(';'));
-            return MimeTypeUtility.GetExtension(mimeType);
+        {            
+            try
+            {
+                string mimeType = this.webClient.ResponseHeaders[HttpResponseHeader.ContentType];
+                if (mimeType.Contains(";"))
+                    mimeType = mimeType.Remove(mimeType.IndexOf(';'));
+                return MimeTypeUtility.GetExtension(mimeType);
+            }
+            catch (Exception)
+            {
+                return "";
+            }            
         }
 
         /// <summary>
